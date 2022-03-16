@@ -7,7 +7,7 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;
 
   ros::Publisher plane_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("plane_cloud", 10);
-  std::string pkg_path = ros::package::getPath("safe_path");
+  std::string pkg_path = ros::package::getPath("sara_arm");
   std::string config_path = pkg_path + "/config/pcp_params.yaml";
   
   PointCloudProc pcp(nh, false, config_path);

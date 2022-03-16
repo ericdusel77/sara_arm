@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(safe_path)
+project(sara_arm)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -51,12 +51,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message2.msg
 # )
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+# Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  image_to_cloud_point.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -66,10 +65,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs  # Or other packages containing msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -100,12 +99,12 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
+# catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES safe_path
+#  LIBRARIES sara_arm
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
-)
+# )
 
 ###########
 ## Build ##
@@ -114,14 +113,16 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
- ${catkin_INCLUDE_DIRS}
+  include
+  ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/safe_path.cpp
+#   src/${PROJECT_NAME}/sara_arm.cpp
 # )
+
+add_library(pcp_sara src/pcp_sara.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -131,13 +132,16 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/safe_path_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/sara_arm_node.cpp)
 
 add_executable(ground_plane_pub src/ground_plane_pub.cpp)
 target_link_libraries(ground_plane_pub ${catkin_LIBRARIES})
 
-add_executable(cloud_to_image src/cloud_to_image.cpp)
-target_link_libraries(cloud_to_image ${catkin_LIBRARIES})
+add_executable(cloud_cycle_points src/cloud_cycle_points.cpp)
+target_link_libraries(cloud_cycle_points ${catkin_LIBRARIES})
+
+add_executable(pcp_service src/pcp_service.cpp)
+target_link_libraries(pcp_service ${catkin_LIBRARIES} pcp_sara)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -167,9 +171,7 @@ target_link_libraries(cloud_to_image ${catkin_LIBRARIES})
 #   scripts/my_python_script
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
-catkin_install_python(PROGRAMS scripts/cloud_to_image2.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 # install(TARGETS ${PROJECT_NAME}_node
@@ -203,7 +205,7 @@ catkin_install_python(PROGRAMS scripts/cloud_to_image2.py
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_safe_path.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_sara_arm.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

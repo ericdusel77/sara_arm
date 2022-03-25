@@ -7,13 +7,9 @@
         <arg name="ordered_pc" value="true" />
     </include>
 
-    <node pkg="tf" type="static_transform_publisher" name="world_to_camera" args="0.0 0.0 0.86 0.0 0.420 0.0 /map /camera_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="world_to_camera" args="-0.5 0.0 0.9 0.0 0.420 0.0 /world /camera_link 10" />
 
     <node pkg="sara_arm" type="pcp_service" name="pcp_sara_service" />
-
-    <arg name="rvizconfig"    default="$(find sara_arm)/rviz/ground_plane.rviz" />
-
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
     <node name="clicker" pkg="sara_arm" type="image_converter.py" />
 

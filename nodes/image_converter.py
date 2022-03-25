@@ -5,7 +5,7 @@ from tempfile import TemporaryFile
 import rospy
 import cv2
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PoseStamped
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from sara_arm.srv import *
@@ -17,7 +17,7 @@ class image_converter:
 
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
-    self.click_pub = rospy.Publisher("click_input",PointStamped,queue_size=10)
+    self.click_pub = rospy.Publisher("click_input",PoseStamped,queue_size=10)
 
   def callback(self,data):
     try:
@@ -77,6 +77,7 @@ class image_converter:
       except rospy.ServiceException as e:
         print("service call failed: %s"%e)
 
+      
       self.click_pub.publish(resp1.cloud_input)
 
 def main(args):

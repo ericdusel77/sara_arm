@@ -1,5 +1,5 @@
 point_cloud_topic: "/camera/depth/color/points"
-fixed_frame: "map"
+fixed_frame: "world"
 filters:
   pass_limits: [0.0, 2.0, -1.2, 1.2, -0.1, 2.0]
   prism_limits: [-0.25, -0.02]

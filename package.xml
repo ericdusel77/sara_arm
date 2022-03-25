@@ -55,7 +55,11 @@
   <build_depend>sensor_msgs</build_depend>
   <build_depend>point_cloud_proc</build_depend>
   <build_depend>message_generation</build_depend>
+  <build_depend>moveit_core</build_depend>
+  <build_depend>moveit_ros_planning_interface</build_depend>
 
+  <exec_depend>moveit_core</exec_depend>
+  <exec_depend>moveit_ros_planning_interface</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>

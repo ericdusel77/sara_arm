@@ -1,5 +1,5 @@
 uint16 col
 uint16 row
 ---
-geometry_msgs/PointStamped cloud_input
+geometry_msgs/PoseStamped cloud_input
 bool success

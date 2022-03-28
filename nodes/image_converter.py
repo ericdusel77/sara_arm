@@ -17,17 +17,13 @@ class image_converter:
 
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
-    self.click_pub = rospy.Publisher("click_input",PoseStamped,queue_size=10)
+    self.click_pub = rospy.Publisher("cloud_in_pose",PoseStamped,queue_size=10)
 
   def callback(self,data):
     try:
       cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
     except CvBridgeError as e:
       print(e)
-
-    (rows,cols,channels) = cv_image.shape
-    if cols > 60 and rows > 60 :
-      cv2.circle(cv_image, (50,50), 10, 255)
 
     # cv_image_new = self.contour(cv_image)
 
@@ -57,16 +53,16 @@ class image_converter:
 
   # Image segmentation using CONTOURING
   def contour(self, cv_image):
-      img = cv2.resize(cv_image,(256,256))
-      gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-      _,thresh = cv2.threshold(gray, np.mean(gray), 255, cv2.THRESH_BINARY_INV)
-      edges = cv2.dilate(cv2.Canny(thresh,0,255),None)
-      cnt = sorted(cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2], key=cv2.contourArea)[-1]
-      mask = np.zeros((256,256), np.uint8)
-      masked = cv2.drawContours(mask, [cnt], -1, 255, -1)
-      dst = cv2.bitwise_and(img, img, mask=masked)
-      segmented = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
-      return segmented
+    img = cv2.resize(cv_image,(256,256))
+    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    _,thresh = cv2.threshold(gray, np.mean(gray), 255, cv2.THRESH_BINARY_INV)
+    edges = cv2.dilate(cv2.Canny(thresh,0,255),None)
+    cnt = sorted(cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2], key=cv2.contourArea)[-1]
+    mask = np.zeros((256,256), np.uint8)
+    masked = cv2.drawContours(mask, [cnt], -1, 255, -1)
+    dst = cv2.bitwise_and(img, img, mask=masked)
+    segmented = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
+    return segmented
 
   def click(self, event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -78,7 +74,7 @@ class image_converter:
         print("service call failed: %s"%e)
 
       
-      self.click_pub.publish(resp1.cloud_input)
+      self.click_pub.publish(resp1.cloud_in_pose)
 
 def main(args):
   ic = image_converter()

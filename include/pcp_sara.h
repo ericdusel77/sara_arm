@@ -1,15 +1,50 @@
 #ifndef PCP_SARA_H
 #define PCP_SARA_H
 
-#include "ros/ros.h"
-#include <point_cloud_proc/point_cloud_proc.h>
+// ROS
+#include <ros/ros.h>
+#include <ros/package.h>
+
+// PCL
+#include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
+
+#include <pcl/point_types.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/common/common.h>
+#include <pcl/common/utils.h>
 #include "sara_arm/image_to_cloud_point.h"
 
-class PcpSara: public PointCloudProc {
+class PcpSara {
+    typedef pcl::PointXYZRGB PointT;
+    typedef pcl::Normal PointNT;
+    typedef pcl::PointCloud<PointT> CloudT;
+    typedef pcl::PointCloud<PointNT> CloudNT;
     public:
-        using PointCloudProc::PointCloudProc;
+        PcpSara(ros::NodeHandle n);
 
-        bool get3DPointSrv(sara_arm::image_to_cloud_point::Request &req, sara_arm::image_to_cloud_point::Response &res) ;
+        void pointCloudCb(const sensor_msgs::PointCloud2ConstPtr &msg);
+
+        bool transformPointCloud();
+
+        bool get3DPose(int col, int row, geometry_msgs::PoseStamped &point);
+        bool get3DPoseSrv(sara_arm::image_to_cloud_point::Request &req, sara_arm::image_to_cloud_point::Response &res) ;
+        void getNormalEstimation();
+
+    private:
+        // cb + transform
+        bool pc_received_ = false;
+        sensor_msgs::PointCloud2 cloud_raw_ros_;
+        boost::mutex pc_mutex_;
+
+        // params 
+        std::string point_cloud_topic_, fixed_frame_;
+
+        // for pcl processing
+        CloudT::Ptr cloud_transformed_;
+
+        ros::NodeHandle nh_;
+        ros::Subscriber point_cloud_sub_;
 };
 
-#endif
+#endif //PCP_SARA_H

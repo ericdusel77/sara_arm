@@ -5,7 +5,7 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
 {
     ros::NodeHandle pn("~");
     group_ = new moveit::planning_interface::MoveGroupInterface("arm");
-    cloud_input_sub_ = nh_.subscribe("click_input", 1, &SaraArm::cloudInputCbk, this);
+    cloud_input_sub_ = nh_.subscribe("cloud_in_pose", 1, &SaraArm::cloudInputCbk, this);
 }
 
 
@@ -36,4 +36,17 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     target_pose = msg->pose;
     group_->setPoseTarget(target_pose);
     evaluate_plan(*group_);
+}
+
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "pick_place_demo");
+    ros::NodeHandle n;
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
+
+    SaraArm sa(n);
+
+    ros::waitForShutdown();
+    return 0;
 }

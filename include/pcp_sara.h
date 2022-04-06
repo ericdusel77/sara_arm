@@ -14,12 +14,14 @@
 #include <pcl/common/common.h>
 #include <pcl/common/utils.h>
 #include "sara_arm/image_to_cloud_point.h"
+#include <visualization_msgs/Marker.h>
 
 class PcpSara {
     typedef pcl::PointXYZRGB PointT;
     typedef pcl::Normal PointNT;
     typedef pcl::PointCloud<PointT> CloudT;
     typedef pcl::PointCloud<PointNT> CloudNT;
+    
     public:
         PcpSara(ros::NodeHandle n);
 
@@ -29,7 +31,6 @@ class PcpSara {
 
         bool get3DPose(int col, int row, geometry_msgs::PoseStamped &point);
         bool get3DPoseSrv(sara_arm::image_to_cloud_point::Request &req, sara_arm::image_to_cloud_point::Response &res) ;
-        void getNormalEstimation();
 
     private:
         // cb + transform
@@ -45,6 +46,9 @@ class PcpSara {
 
         ros::NodeHandle nh_;
         ros::Subscriber point_cloud_sub_;
+        ros::Publisher point_cloud_pub_;
+        ros::Publisher plane_cloud_pub_;
+        ros::Publisher marker_pub;
 };
 
 #endif //PCP_SARA_H

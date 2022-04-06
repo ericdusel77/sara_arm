@@ -13,4 +13,8 @@
 
     <node name="clicker" pkg="sara_arm" type="image_converter.py" />
 
+    <!-- <arg name="rvizconfig"    default="$(find sara_arm)/rviz/image_converter.rviz" />
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" /> -->
+
 </launch>

@@ -1,5 +1,23 @@
 #include <pcp_sara.h>
 
+tf::Quaternion EulerZYZ_to_Quaternion(double tz1, double ty, double tz2)
+{
+    tf::Quaternion q;
+    tf::Matrix3x3 rot;
+    tf::Matrix3x3 rot_temp;
+    rot.setIdentity();
+
+    rot_temp.setEulerYPR(tz1, 0.0, 0.0);
+    rot *= rot_temp;
+    rot_temp.setEulerYPR(0.0, -ty, 0.0);
+    rot *= rot_temp;
+    rot_temp.setEulerYPR(tz2, 0.0, 0.0);
+    rot *= rot_temp;
+    rot.getRotation(q);
+    return q;
+}
+
+
 PcpSara::PcpSara(ros::NodeHandle n) :
         nh_(n), cloud_transformed_(new CloudT){
 
@@ -9,7 +27,9 @@ PcpSara::PcpSara(ros::NodeHandle n) :
 
     // Subscriber 
     point_cloud_sub_ = nh_.subscribe(point_cloud_topic_, 10, &PcpSara::pointCloudCb, this);
-    
+    point_cloud_pub_ = n.advertise<sensor_msgs::PointCloud2>("chatter", 10);
+    plane_cloud_pub_ = n.advertise<sensor_msgs::PointCloud2>("chatter2", 10);
+    marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 }
 
 void PcpSara::pointCloudCb(const sensor_msgs::PointCloud2ConstPtr &msg) {
@@ -72,43 +92,110 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
         std::cout << "PCP: couldn't transform point cloud!" << std::endl;
         return false;
     }
-    std::cout << "CLOUD TRANSFORMED.....MAKE IT COMPATIBEL" << std::endl;
+
     pcl_conversions::fromPCL(cloud_transformed_->header, pose.header);
 
-    // FOR ORIENTATION
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_xyz(new pcl::PointCloud<pcl::PointXYZ>);
-
-    pcl::copyPointCloud(*cloud_transformed_, *cloud_xyz);
-    std::cout << "CLOUD COPIED.....FIND NORMALS" << std::endl;
-    // COMPUTE POINT NORMALS
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    CloudNT::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-
-    tree->setInputCloud(cloud_xyz);
-    ne.setInputCloud(cloud_xyz);
-    ne.setSearchMethod(tree);
-    ne.setKSearch(20);
-    ne.compute(*normals);
-    std::cout << "NORMALS COMPUTED......BEGINNING QUEST FOR POSE" << std::endl;
     if (pcl::isFinite(cloud_transformed_->at(col, row))) {
-
         pose.pose.position.x = cloud_transformed_->at(col, row).x;
         pose.pose.position.y = cloud_transformed_->at(col, row).y;
         pose.pose.position.z = cloud_transformed_->at(col, row).z;
 
+        CloudT newcloud;
+        CloudT plane_cloud;
+        newcloud.header.frame_id = "world";
+        plane_cloud.header.frame_id = "world";
+
+        pcl::NormalEstimation<PointT, PointNT> ne;
+        pcl::Indices indx = {};
+
+        int size = 10;
+        int row_place = row-size;
+        for (int t = 0; t < 2*size; t++){
+            int place = row_place*640+col-size;
+            for (int i = 0; i < size*2; i++){
+                if (cloud_transformed_->points[place + i].x > 0){
+                    indx.push_back(place + i);
+                    newcloud.push_back(cloud_transformed_->points[place + i]);
+                }   
+            }
+            row_place++;
+        }
+
+        Eigen::Vector4f plane_parameters;
+        float curvature;
+        ne.computePointNormal(*cloud_transformed_, indx, plane_parameters, curvature);
+        
+        float a = -1*(plane_parameters[0]/plane_parameters[2]);
+        float b = -1*(plane_parameters[1]/plane_parameters[2]);
+        float c = -1*(plane_parameters[3]/plane_parameters[2]);
+
+        for (float x = -10; x < 10; x++){
+            for (float y = -10; y < 10; y++){
+                PointT temp_p;
+                temp_p.x = cloud_transformed_->at(col, row).x+(x/50);
+                temp_p.y = cloud_transformed_->at(col, row).y+(y/50);
+                temp_p.z = a*(cloud_transformed_->at(col, row).x+(x/50)) + b*(cloud_transformed_->at(col, row).y+(y/50)) + c;
+                plane_cloud.push_back(temp_p);
+            }
+        }
+
+        point_cloud_pub_.publish(newcloud);
+        plane_cloud_pub_.publish(plane_cloud);
+
         // EXTRACT NORMAL
         tf2::Vector3 normal;
-        normal.setX(normals->at(col, row).normal_x);
-        normal.setY(normals->at(col, row).normal_y);
-        normal.setZ(normals->at(col, row).normal_z);
-        // CONVERT TO QUATERNION
-        tf2::Quaternion qq(normal,1);
+        normal.setX(plane_parameters[0]);
+        normal.setY(plane_parameters[1]);
+        normal.setZ(plane_parameters[2]);
+
+        double phi = atan2(normal.getY(),normal.getX());
+        double theta = asin(normal.getZ()/normal.length());
+        
+        if (abs(phi) > M_PI/2){
+            phi = phi + M_PI;
+            theta = -theta;
+        }
+    
+        tf::Quaternion qq;
+        qq = EulerZYZ_to_Quaternion(phi, theta, 0.0);
+
         pose.pose.orientation.x = qq.x();
         pose.pose.orientation.y = qq.y();
         pose.pose.orientation.z = qq.z();
         pose.pose.orientation.w = qq.w();
+
+        visualization_msgs::Marker points, line_strip, line_list;
+        line_strip.header.frame_id = "world";
+        line_strip.header.stamp = ros::Time::now();
+        line_strip.ns = "points_and_lines";
+        line_strip.action = visualization_msgs::Marker::ADD;
+        line_strip.pose.orientation.w = 1.0;
+
+        line_strip.id = 1;
+
+        line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+
+        // LINE_STRIP/LINE_LIST markers use only the x component of scale, for the line width
+        line_strip.scale.x = 0.1;
+
+        // Line strip is blue
+        line_strip.color.b = 1.0;
+        line_strip.color.a = 1.0;
+
+        // Create the vertices for the points and lines
+        for (uint32_t i = 0; i < 2; ++i)
+        {
+            geometry_msgs::Point p;
+            p.x = i*normal.getX();
+            p.y = i*normal.getY();
+            p.z = i*normal.getZ();
+
+            line_strip.points.push_back(p);
+
+        }
+
+        marker_pub.publish(line_strip);
+
         return true;
     } else {
         std::cout << "PCP: The 3D point is not valid!" << std::endl;
@@ -125,24 +212,6 @@ bool PcpSara::get3DPoseSrv(sara_arm::image_to_cloud_point::Request &req, sara_ar
     return true;
 }
 
-void PcpSara::getNormalEstimation()
-{
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_xyz(new pcl::PointCloud<pcl::PointXYZ>);
-
-    pcl::copyPointCloud(*cloud_transformed_, *cloud_xyz);
-
-    // Compute point normals
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    CloudNT::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-
-    tree->setInputCloud(cloud_xyz);
-    ne.setInputCloud(cloud_xyz);
-    ne.setSearchMethod(tree);
-    ne.setKSearch(20);
-    ne.compute(*normals);
-}
 
 int main(int argc, char** argv)
 {

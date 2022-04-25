@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   	sensor_msgs
     tf2
     tf2_ros
+    kinova_msgs
 )
 
 

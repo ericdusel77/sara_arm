@@ -46,9 +46,6 @@ class PcpSara {
 
         ros::NodeHandle nh_;
         ros::Subscriber point_cloud_sub_;
-        ros::Publisher point_cloud_pub_;
-        ros::Publisher plane_cloud_pub_;
-        ros::Publisher marker_pub;
 };
 
 #endif //PCP_SARA_H

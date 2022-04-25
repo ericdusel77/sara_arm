@@ -1,23 +1,5 @@
 #include <pcp_sara.h>
 
-tf::Quaternion EulerZYZ_to_Quaternion(double tz1, double ty, double tz2)
-{
-    tf::Quaternion q;
-    tf::Matrix3x3 rot;
-    tf::Matrix3x3 rot_temp;
-    rot.setIdentity();
-
-    rot_temp.setEulerYPR(tz1, 0.0, 0.0);
-    rot *= rot_temp;
-    rot_temp.setEulerYPR(0.0, -ty, 0.0);
-    rot *= rot_temp;
-    rot_temp.setEulerYPR(tz2, 0.0, 0.0);
-    rot *= rot_temp;
-    rot.getRotation(q);
-    return q;
-}
-
-
 PcpSara::PcpSara(ros::NodeHandle n) :
         nh_(n), cloud_transformed_(new CloudT){
 
@@ -27,9 +9,6 @@ PcpSara::PcpSara(ros::NodeHandle n) :
 
     // Subscriber 
     point_cloud_sub_ = nh_.subscribe(point_cloud_topic_, 10, &PcpSara::pointCloudCb, this);
-    point_cloud_pub_ = n.advertise<sensor_msgs::PointCloud2>("chatter", 10);
-    plane_cloud_pub_ = n.advertise<sensor_msgs::PointCloud2>("chatter2", 10);
-    marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 }
 
 void PcpSara::pointCloudCb(const sensor_msgs::PointCloud2ConstPtr &msg) {
@@ -96,105 +75,50 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
     pcl_conversions::fromPCL(cloud_transformed_->header, pose.header);
 
     if (pcl::isFinite(cloud_transformed_->at(col, row))) {
+        // SET POSE POSITION
         pose.pose.position.x = cloud_transformed_->at(col, row).x;
         pose.pose.position.y = cloud_transformed_->at(col, row).y;
         pose.pose.position.z = cloud_transformed_->at(col, row).z;
+        
+        // FIND CLOSEST POINTS
+        pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT> ());
+        pcl::Indices indx;
+        std::vector<float> distances;
+        tree->setInputCloud(cloud_transformed_);
+        tree->nearestKSearch(cloud_transformed_->at(col, row),300,indx, distances);
 
-        CloudT newcloud;
-        CloudT plane_cloud;
-        newcloud.header.frame_id = "world";
-        plane_cloud.header.frame_id = "world";
-
-        pcl::NormalEstimation<PointT, PointNT> ne;
-        pcl::Indices indx = {};
-
-        int size = 10;
-        int row_place = row-size;
-        for (int t = 0; t < 2*size; t++){
-            int place = row_place*640+col-size;
-            for (int i = 0; i < size*2; i++){
-                if (cloud_transformed_->points[place + i].x > 0){
-                    indx.push_back(place + i);
-                    newcloud.push_back(cloud_transformed_->points[place + i]);
-                }   
-            }
-            row_place++;
-        }
-
+        // COMPUTE NORMAL
         Eigen::Vector4f plane_parameters;
         float curvature;
+        pcl::NormalEstimation<PointT, PointNT> ne;
         ne.computePointNormal(*cloud_transformed_, indx, plane_parameters, curvature);
         
-        float a = -1*(plane_parameters[0]/plane_parameters[2]);
-        float b = -1*(plane_parameters[1]/plane_parameters[2]);
-        float c = -1*(plane_parameters[3]/plane_parameters[2]);
+        // EXTRACT NORMAL AND SET POSE ORIENTATION
+        double phi = atan2(plane_parameters[1],plane_parameters[0]);
+        double theta = asin(-plane_parameters[2]);
 
-        for (float x = -10; x < 10; x++){
-            for (float y = -10; y < 10; y++){
-                PointT temp_p;
-                temp_p.x = cloud_transformed_->at(col, row).x+(x/50);
-                temp_p.y = cloud_transformed_->at(col, row).y+(y/50);
-                temp_p.z = a*(cloud_transformed_->at(col, row).x+(x/50)) + b*(cloud_transformed_->at(col, row).y+(y/50)) + c;
-                plane_cloud.push_back(temp_p);
-            }
-        }
-
-        point_cloud_pub_.publish(newcloud);
-        plane_cloud_pub_.publish(plane_cloud);
-
-        // EXTRACT NORMAL
-        tf2::Vector3 normal;
-        normal.setX(plane_parameters[0]);
-        normal.setY(plane_parameters[1]);
-        normal.setZ(plane_parameters[2]);
-
-        double phi = atan2(normal.getY(),normal.getX());
-        double theta = asin(normal.getZ()/normal.length());
-        
         if (abs(phi) > M_PI/2){
             phi = phi + M_PI;
             theta = -theta;
         }
+
+        theta = theta + M_PI/2;
     
-        tf::Quaternion qq;
-        qq = EulerZYZ_to_Quaternion(phi, theta, 0.0);
+        tf::Quaternion q;
+        tf::Matrix3x3 rot;
+        tf::Matrix3x3 rot_temp;
+        rot.setIdentity();
 
-        pose.pose.orientation.x = qq.x();
-        pose.pose.orientation.y = qq.y();
-        pose.pose.orientation.z = qq.z();
-        pose.pose.orientation.w = qq.w();
+        rot_temp.setEulerYPR(phi, 0.0, 0.0);
+        rot *= rot_temp;
+        rot_temp.setEulerYPR(0.0, theta, 0.0);
+        rot *= rot_temp;
+        rot.getRotation(q);
 
-        visualization_msgs::Marker points, line_strip, line_list;
-        line_strip.header.frame_id = "world";
-        line_strip.header.stamp = ros::Time::now();
-        line_strip.ns = "points_and_lines";
-        line_strip.action = visualization_msgs::Marker::ADD;
-        line_strip.pose.orientation.w = 1.0;
-
-        line_strip.id = 1;
-
-        line_strip.type = visualization_msgs::Marker::LINE_STRIP;
-
-        // LINE_STRIP/LINE_LIST markers use only the x component of scale, for the line width
-        line_strip.scale.x = 0.1;
-
-        // Line strip is blue
-        line_strip.color.b = 1.0;
-        line_strip.color.a = 1.0;
-
-        // Create the vertices for the points and lines
-        for (uint32_t i = 0; i < 2; ++i)
-        {
-            geometry_msgs::Point p;
-            p.x = i*normal.getX();
-            p.y = i*normal.getY();
-            p.z = i*normal.getZ();
-
-            line_strip.points.push_back(p);
-
-        }
-
-        marker_pub.publish(line_strip);
+        pose.pose.orientation.x = q.x();
+        pose.pose.orientation.y = q.y();
+        pose.pose.orientation.z = q.z();
+        pose.pose.orientation.w = q.w();
 
         return true;
     } else {

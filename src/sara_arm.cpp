@@ -11,19 +11,17 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
 
     sub_joint_ = nh_.subscribe<sensor_msgs::JointState>("/j2n6s300_driver/out/joint_state", 1, &SaraArm::get_current_state, this);
 
-    cloud_input_sub_ = nh_.subscribe("cloud_in_pose", 1, &SaraArm::cloudInputCbk, this);
+    cloud_input_sub_ = nh_.subscribe("button_pose", 1, &SaraArm::cloudInputCbk, this);
 
-    marker_pub = nh_.advertise<geometry_msgs::PoseStamped>("cloud_in_pose2", 10);
+    marker_pub = nh_.advertise<geometry_msgs::PoseStamped>("pre_button_pose", 10);
+    array_pub = nh_.advertise<geometry_msgs::PoseArray>("trajectory", 10);
 
     robot_type_ = "j2n6s300";
     robot_connected_ = true;
-    tf::Pose Home;
-    Home.setOrigin(tf::Vector3(0.212322831154, -0.257197618484, 0.509646713734));
-    // Home.setRotation(kinova::EulerXYZ2Quaternion(1.63771402836,1.11316478252, 0.134094119072));
-    Home.setRotation(tf::Quaternion(0.68463, -0.22436, 0.68808, 0.086576));
-    geometry_msgs::Pose start_pose; // start from Home pose of j2n6
-    tf::poseTFToMsg(Home, start_pose);
-    group_->setPoseTarget(start_pose);
+    home = {87*M_PI/180, 192*M_PI/180, 301*M_PI/180, 62*M_PI/180, 74*M_PI/180, -11*M_PI/180};
+
+    group_->setJointValueTarget(home);
+
     evaluate_plan(*group_);
 
     finger_client_ = new actionlib::SimpleActionClient<kinova_msgs::SetFingersPositionAction>
@@ -72,6 +70,11 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     tf::Quaternion q = button.getRotation();
     tf::Vector3 r_col = button.getBasis().getColumn(2);
 
+    if (button_xyz[0] < 0){
+        std::cout<<"Found incorrect pose. Try pressing a different point."<<std::endl;
+        return;
+    }
+
     // PRE BUTTON POSE FROM BUTTON POSE WITH OFFSET
     tf::Pose pre_button;
     float offset = 0.05;
@@ -92,8 +95,12 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     geometry_msgs::Pose start_pose; // start from Home pose of j2n6
     tf::poseTFToMsg(Home, start_pose);
 
+    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(group_->getRobotModel()));
+    robot_state->setToDefaultValues();
+    const moveit::core::JointModelGroup* joint_model_group = group_->getRobotModel()->getJointModelGroup("arm");
 
-    // moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(group_->getRobotModel()));
+
+    // const std::vector<std::string>& joint_names = joint_model_group->getVariableNames();
     // moveit::core::jointStateToRobotState(current_state_, *robot_state);
 
     // planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(group_->getRobotModel()));
@@ -177,6 +184,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     std::vector<geometry_msgs::Pose> waypoints;
     waypoints.push_back(pre_button_msg.pose);  // PRE BUTTON
     waypoints.push_back(msg->pose);  // GOAL (BUTTON)
+    waypoints.push_back(pre_button_msg.pose);  // PRE BUTTON
     waypoints.push_back(start_pose);  // HOME
     moveit_msgs::RobotTrajectory trajectory;
     double fraction = group_->computeCartesianPath(waypoints,
@@ -184,12 +192,28 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
                                                     10.0,   // jump_threshold
                                                     trajectory);
 
-    // trajectory_msgs::JointTrajectory j2 = trajectory.joint_trajectory;
-    // std::cout<<j2.points.back()<<std::endl;
+
+    // std::cout<<j.points.back()<<std::endl;
+    std::vector<trajectory_msgs::JointTrajectoryPoint> j = trajectory.joint_trajectory.points;
+    geometry_msgs::PoseArray poseArray;
+    poseArray.header.frame_id = "world";
+    for (int i=0;i<j.size();i++) {
+        std::vector<double> joint_values = j[i].positions;
+        robot_state->setJointGroupPositions(joint_model_group, joint_values);
+        const Eigen::Isometry3d& end_effector_state = robot_state->getGlobalLinkTransform(group_->getEndEffectorLink());
+
+        geometry_msgs::Pose p = tf2::toMsg(end_effector_state);
+        poseArray.poses.push_back(p);
+    }
+    array_pub.publish(poseArray);
+
     // EXECUTE TRAJECTORY IF FULL PATH IS FOUND
     if (fraction == 1){
-
-        group_->execute(trajectory);
+        ROS_INFO_STREAM("Press 'y'' to start motion plan ...");
+        std::cin >> pause_;
+        if (pause_ == "y" || pause_ == "Y"){
+            group_->execute(trajectory);
+        }
     }
     
 }

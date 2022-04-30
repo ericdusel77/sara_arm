@@ -6,6 +6,7 @@
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <geometric_shapes/solid_primitive_dims.h>
 #include <tf/transform_broadcaster.h>
+#include <tf2_eigen/tf2_eigen.h>
 #include <kinova_msgs/SetFingersPositionAction.h>
 
 #include <moveit/kinematic_constraints/utils.h>
@@ -28,6 +29,7 @@ class SaraArm
 public:
     SaraArm(ros::NodeHandle &nh);
     ~SaraArm();
+    std::vector<double> home;
 
 private:
     ros::NodeHandle nh_;
@@ -41,8 +43,10 @@ private:
     bool result_;
     
     ros::Publisher marker_pub;
+    ros::Publisher array_pub;
     ros::Subscriber sub_joint_;
     // update current state and pose
+    std::string pause_;
     boost::mutex mutex_state_;
     boost::mutex mutex_pose_;
     sensor_msgs::JointState current_state_;

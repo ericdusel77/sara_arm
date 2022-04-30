@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_ros
     kinova_msgs
     moveit_visual_tools
+    tf2_eigen
 )
 
 

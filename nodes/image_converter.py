@@ -17,7 +17,7 @@ class image_converter:
 
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
-    self.click_pub = rospy.Publisher("cloud_in_pose",PoseStamped,queue_size=10)
+    self.click_pub = rospy.Publisher("button_pose",PoseStamped,queue_size=10)
 
   def callback(self,data):
     try:

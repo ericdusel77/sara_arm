@@ -6,7 +6,10 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
     nh_(nh)
 {
     ros::NodeHandle pn("~");
+
     group_ = new moveit::planning_interface::MoveGroupInterface("arm");
+
+    sub_joint_ = nh_.subscribe<sensor_msgs::JointState>("/j2n6s300_driver/out/joint_state", 1, &SaraArm::get_current_state, this);
 
     cloud_input_sub_ = nh_.subscribe("cloud_in_pose", 1, &SaraArm::cloudInputCbk, this);
 
@@ -29,7 +32,7 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
       ROS_INFO("Waiting for the finger action server to come up");
     }
 
-    gripper_action(FINGER_MAX); // partially close
+    gripper_action(FINGER_MAX); 
 
 }
 
@@ -39,6 +42,12 @@ SaraArm::~SaraArm()
     delete group_;
 }
 
+
+void SaraArm::get_current_state(const sensor_msgs::JointStateConstPtr &msg)
+{
+    boost::mutex::scoped_lock lock(mutex_state_);
+    current_state_ = *msg;
+}
 
 void SaraArm::evaluate_plan(moveit::planning_interface::MoveGroupInterface &group)
 {
@@ -56,15 +65,16 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     ros::AsyncSpinner spinner(1);
     spinner.start();
-
+    //TURN BUTTON POSE MSG INTO TF TO GET ROTATION AND TRANSLATION
     tf::Pose button;
     tf::poseMsgToTF(msg->pose, button);
     tf::Vector3 button_xyz = button.getOrigin();
     tf::Quaternion q = button.getRotation();
     tf::Vector3 r_col = button.getBasis().getColumn(2);
 
+    // PRE BUTTON POSE FROM BUTTON POSE WITH OFFSET
     tf::Pose pre_button;
-    float offset = 0.1;
+    float offset = 0.05;
     tf::Vector3 pre_button_xyz(-r_col.getX()*offset + button_xyz[0], -r_col.getY()*offset + button_xyz[1], -r_col.getZ()*offset + button_xyz[2]);
     pre_button.setOrigin(pre_button_xyz);
     pre_button.setRotation(q);
@@ -74,6 +84,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     pre_button_msg.header = msg->header;
     marker_pub.publish(pre_button_msg);
 
+    // HOME POSE
     tf::Pose Home;
     Home.setOrigin(tf::Vector3(0.212322831154, -0.257197618484, 0.509646713734));
     // Home.setRotation(kinova::EulerXYZ2Quaternion(1.63771402836,1.11316478252, 0.134094119072));
@@ -81,27 +92,103 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     geometry_msgs::Pose start_pose; // start from Home pose of j2n6
     tf::poseTFToMsg(Home, start_pose);
 
+
+    // moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(group_->getRobotModel()));
+    // moveit::core::jointStateToRobotState(current_state_, *robot_state);
+
+    // planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(group_->getRobotModel()));
+
+    // planning_scene->setCurrentState(*robot_state);
+
+    // // We will now construct a loader to load a planner, by name.
+    // // Note that we are using the ROS pluginlib library here.
+    // boost::scoped_ptr<pluginlib::ClassLoader<planning_interface::PlannerManager>> planner_plugin_loader;
+    // planning_interface::PlannerManagerPtr planner_instance;
+    // std::string planner_plugin_name = "ompl_interface/OMPLPlanner";
+
+    // // We will get the name of planning plugin we want to load
+    // // from the ROS parameter server, and then load the planner
+    // // making sure to catch all exceptions.
+    // try
+    // {
+    //     planner_plugin_loader.reset(new pluginlib::ClassLoader<planning_interface::PlannerManager>(
+    //         "moveit_core", "planning_interface::PlannerManager"));
+    // }
+    // catch (pluginlib::PluginlibException& ex)
+    // {
+    //     ROS_FATAL_STREAM("Exception while creating planning plugin loader " << ex.what());
+    // }
+    // try
+    // {
+    //     planner_instance.reset(planner_plugin_loader->createUnmanagedInstance(planner_plugin_name));
+    //     if (!planner_instance->initialize(robot_state->getRobotModel(), nh_.getNamespace()))
+    //     ROS_FATAL_STREAM("Could not initialize planner instance");
+    //     ROS_INFO_STREAM("Using planning interface '" << planner_instance->getDescription() << "'");
+    // }
+    // catch (pluginlib::PluginlibException& ex)
+    // {
+    //     const std::vector<std::string>& classes = planner_plugin_loader->getDeclaredClasses();
+    //     std::stringstream ss;
+    //     for (const auto& cls : classes)
+    //     ss << cls << " ";
+    //     ROS_ERROR_STREAM("Exception while loading planner '" << planner_plugin_name << "': " << ex.what() << std::endl
+    //                                                         << "Available plugins: " << ss.str());
+    // }
+
+    // planning_interface::MotionPlanRequest req;
+    // planning_interface::MotionPlanResponse res;
+
+    // // A tolerance of 0.01 m is specified in position
+    // // and 0.01 radians in orientation
+    // std::vector<double> tolerance_pose(3, 0.01);
+    // std::vector<double> tolerance_angle = {0.01,0.01,1.0};
+
+    // // We will create the request as a constraint using a helper function available
+    // // from the
+    // // `kinematic_constraints`_
+    // // package.
+    // //
+    // // .. _kinematic_constraints:
+    // //     http://docs.ros.org/noetic/api/moveit_core/html/cpp/namespacekinematic__constraints.html#a88becba14be9ced36fefc7980271e132
+    // moveit_msgs::Constraints pose_goal =
+    //     kinematic_constraints::constructGoalConstraints("j2n6s300_end_effector", *msg, tolerance_pose, tolerance_angle);
+
+    // req.group_name = "arm";
+    // req.goal_constraints.push_back(pose_goal);
+
+    // // We now construct a planning context that encapsulate the scene,
+    // // the request and the response. We call the planner using this
+    // // planning context
+    // planning_interface::PlanningContextPtr context =
+    //     planner_instance->getPlanningContext(planning_scene, req, res.error_code_);
+    // context->solve(res);
+    // if (res.error_code_.val != res.error_code_.SUCCESS)
+    // {
+    //     ROS_ERROR("Could not compute plan successfully");
+    //     return;
+    // }
+
+    // moveit_msgs::RobotTrajectory trajectory2;
+    // res.trajectory_->getRobotTrajectoryMsg(trajectory2);
+    // trajectory_msgs::JointTrajectory j = trajectory2.joint_trajectory;
+    // std::cout<<j.points.back()<<std::endl;
+
+    // CREATE TRAJECTORY
     std::vector<geometry_msgs::Pose> waypoints;
-
-    // // waypoints.push_back(start_pose);  // up and out
-
-    // waypoints.push_back(pre_button_msg.pose);  // up and out
-    
-    waypoints.push_back(msg->pose);  // down and right (back to start)
-
-    // // waypoints.push_back(pre_button_msg.pose);  // up and out
-
-    waypoints.push_back(start_pose);  // up and out
-    // We want the cartesian path to be interpolated at a resolution of 1 cm
-    // which is why we will specify 0.01 as the max step in cartesian
-    // translation. 
+    waypoints.push_back(pre_button_msg.pose);  // PRE BUTTON
+    waypoints.push_back(msg->pose);  // GOAL (BUTTON)
+    waypoints.push_back(start_pose);  // HOME
     moveit_msgs::RobotTrajectory trajectory;
     double fraction = group_->computeCartesianPath(waypoints,
-                                                    0.01,  // eef_step
+                                                    0.01,  // eef_step - path to be interpolated at this resolution
                                                     10.0,   // jump_threshold
                                                     trajectory);
 
+    // trajectory_msgs::JointTrajectory j2 = trajectory.joint_trajectory;
+    // std::cout<<j2.points.back()<<std::endl;
+    // EXECUTE TRAJECTORY IF FULL PATH IS FOUND
     if (fraction == 1){
+
         group_->execute(trajectory);
     }
     

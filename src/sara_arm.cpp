@@ -13,7 +13,7 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
 
     cloud_input_sub_ = nh_.subscribe("button_pose", 1, &SaraArm::cloudInputCbk, this);
 
-    marker_pub = nh_.advertise<geometry_msgs::PoseStamped>("pre_button_pose", 10);
+    marker_pub = nh_.advertise<geometry_msgs::PoseStamped>("approach_pose", 10);
     array_pub = nh_.advertise<geometry_msgs::PoseArray>("trajectory", 10);
 
     robot_type_ = "j2n6s300";
@@ -161,31 +161,31 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     geometry_msgs::Pose c_goal = tf2::toMsg(state_goal);
 
     // CONVERT CONSTRAINED POSE TO BUTTON
-    tf::poseMsgToTF(c_goal, button);
+    // tf::poseMsgToTF(c_goal, button);
 
     // USE FOR GETTING PRE-BUTTON POSE
     tf::Quaternion q = button.getRotation();
     tf::Vector3 r_col = button.getBasis().getColumn(2);
     
     // PRE BUTTON POSE FROM BUTTON POSE WITH OFFSET
-    tf::Pose pre_button;
+    tf::Pose approach;
     float offset = 0.05;
-    tf::Vector3 pre_button_xyz(-r_col.getX()*offset + button_xyz[0], -r_col.getY()*offset + button_xyz[1], -r_col.getZ()*offset + button_xyz[2]);
-    pre_button.setOrigin(pre_button_xyz);
-    pre_button.setRotation(q);
+    tf::Vector3 approach_xyz(-r_col.getX()*offset + button_xyz[0], -r_col.getY()*offset + button_xyz[1], -r_col.getZ()*offset + button_xyz[2]);
+    approach.setOrigin(approach_xyz);
+    approach.setRotation(q);
 
     // CONVERT TF TO POSE MSG
-    geometry_msgs::PoseStamped pre_button_msg;
-    tf::poseTFToMsg(pre_button, pre_button_msg.pose);
-    pre_button_msg.header = msg->header;
-    marker_pub.publish(pre_button_msg);
+    geometry_msgs::PoseStamped approach_msg;
+    tf::poseTFToMsg(approach, approach_msg.pose);
+    approach_msg.header = msg->header;
+    marker_pub.publish(approach_msg);
 
     // CREATE TRAJECTORY
     std::vector<geometry_msgs::Pose> waypoints;
-    waypoints.push_back(pre_button_msg.pose);  // PRE BUTTON
-    // waypoints.push_back(msg->pose);  // GOAL (BUTTON)
-    waypoints.push_back(c_goal);  // GOAL (BUTTON)
-    waypoints.push_back(pre_button_msg.pose);  // PRE BUTTON
+    waypoints.push_back(approach_msg.pose);  // PRE BUTTON
+    waypoints.push_back(msg->pose);  // GOAL (BUTTON)
+    // waypoints.push_back(c_goal);  // GOAL (BUTTON)
+    waypoints.push_back(approach_msg.pose);  // PRE BUTTON
     waypoints.push_back(home_pose);  // HOME
     moveit_msgs::RobotTrajectory trajectory;
     double fraction = group_->computeCartesianPath(waypoints,

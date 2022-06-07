@@ -103,6 +103,7 @@ class image_converter:
         elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 3*self.button_h+img_h and not self.selection is None:
           self.selection = (self.selection[0],self.selection[1]+10)
 
+        # SEND COMMAND
         elif not self.selection is None: 
           cloud_point = rospy.ServiceProxy('image_to_cloud_point', image_to_cloud_point)
           resp1 = cloud_point(self.selection[0]-2*self.button_h,self.selection[1]-2*self.button_h)

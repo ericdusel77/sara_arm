@@ -6,6 +6,7 @@ import rospy
 import cv2
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import UInt8
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from sara_arm.srv import *
@@ -17,7 +18,11 @@ class image_converter:
 
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
+
     self.click_pub = rospy.Publisher("button_pose",PoseStamped,queue_size=10)
+    self.type_pub = rospy.Publisher("plan_type",UInt8,queue_size=10)
+
+    self.pcp_service = rospy.ServiceProxy('image_to_cloud_point', image_to_cloud_point)
 
     self.button_h = 50
 
@@ -63,54 +68,73 @@ class image_converter:
 
   def click(self, event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
-      try:
-        img_h = param[0]
-        img_w = param[1]
+      img_h = param[0]
+      img_w = param[1]
 
-        # IMAGE SELECTION
-        if x > 2*self.button_h and x < 2*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h:
-          self.selection = (x,y)
-        
-        # MOVE LEFT FAST
-        elif x<self.button_h and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-          self.selection = (self.selection[0]-10,self.selection[1])
-        
-        # MOVE LEFT SLOW
-        elif x>self.button_h and x<2*self.button_h and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-          self.selection = (self.selection[0]-1,self.selection[1])
-
-        # MOVE RIGHT SLOW
-        elif x>2*self.button_h+img_w and x<3*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-          self.selection = (self.selection[0]+1,self.selection[1])
-        
-        # MOVE RIGHT FAST
-        elif x>3*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-          self.selection = (self.selection[0]+10,self.selection[1])
-
-        # MOVE UP FAST
-        elif x > 2*self.button_h and x < 2*self.button_h+img_w and y < self.button_h and not self.selection is None:
-          self.selection = (self.selection[0],self.selection[1]-10)
-
-        # MOVE UP SLOW
-        elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > self.button_h and y < 2*self.button_h and not self.selection is None:
-          self.selection = (self.selection[0],self.selection[1]-1)
-
-        # MOVE DOWN SLOW
-        elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 2*self.button_h+img_h and y < 3*self.button_h+img_h and not self.selection is None:
-          self.selection = (self.selection[0],self.selection[1]+1)
-
-        # MOVE DOWN FAST
-        elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 3*self.button_h+img_h and not self.selection is None:
-          self.selection = (self.selection[0],self.selection[1]+10)
-
-        # SEND COMMAND
-        elif not self.selection is None: 
-          cloud_point = rospy.ServiceProxy('image_to_cloud_point', image_to_cloud_point)
-          resp1 = cloud_point(self.selection[0]-2*self.button_h,self.selection[1]-2*self.button_h)
-          self.click_pub.publish(resp1.cloud_in_pose)
+      # TOP LEFT BUTTON
+      if x < 2*self.button_h and y < 2*self.button_h:
+        self.type_pub.publish(1)
+        self.send_command()
       
-      except rospy.ServiceException as e:
-        print("service call failed: %s"%e)
+      # TOP RIGHT BUTTON
+      elif x > 2*self.button_h + img_w and y < 2*self.button_h:
+        self.type_pub.publish(2)
+        self.send_command()
+
+      # BOTTOM LEFT BUTTON
+      elif x < 2*self.button_h and y > 2*self.button_h + img_h:
+        self.type_pub.publish(3)
+        self.send_command()
+      
+      # BOTTOM RIGHT BUTTON
+      elif x > 2*self.button_h + img_w and y > 2*self.button_h + img_h:
+        self.type_pub.publish(4)
+        self.send_command()
+
+      # IMAGE SELECTION
+      elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h:
+        self.selection = (x,y)
+      
+      # MOVE LEFT FAST
+      elif x<self.button_h and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
+        self.selection = (self.selection[0]-10,self.selection[1])
+      
+      # MOVE LEFT SLOW
+      elif x>self.button_h and x<2*self.button_h and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
+        self.selection = (self.selection[0]-1,self.selection[1])
+
+      # MOVE RIGHT SLOW
+      elif x>2*self.button_h+img_w and x<3*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
+        self.selection = (self.selection[0]+1,self.selection[1])
+      
+      # MOVE RIGHT FAST
+      elif x>3*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
+        self.selection = (self.selection[0]+10,self.selection[1])
+
+      # MOVE UP FAST
+      elif x > 2*self.button_h and x < 2*self.button_h+img_w and y < self.button_h and not self.selection is None:
+        self.selection = (self.selection[0],self.selection[1]-10)
+
+      # MOVE UP SLOW
+      elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > self.button_h and y < 2*self.button_h and not self.selection is None:
+        self.selection = (self.selection[0],self.selection[1]-1)
+
+      # MOVE DOWN SLOW
+      elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 2*self.button_h+img_h and y < 3*self.button_h+img_h and not self.selection is None:
+        self.selection = (self.selection[0],self.selection[1]+1)
+
+      # MOVE DOWN FAST
+      elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 3*self.button_h+img_h and not self.selection is None:
+        self.selection = (self.selection[0],self.selection[1]+10)
+
+  def send_command(self):
+      if not self.selection is None: 
+        try:
+          resp1 = self.pcp_service(self.selection[0]-2*self.button_h,self.selection[1]-2*self.button_h)
+          self.click_pub.publish(resp1.cloud_in_pose)
+
+        except rospy.ServiceException as e:
+          print("service call failed: %s"%e)
       
   def build_gui(self, msg_img):
     border = 2*self.button_h

@@ -76,9 +76,12 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
 
     if (pcl::isFinite(cloud_transformed_->at(col, row))) {
         // SET POSE POSITION
-        pose.pose.position.x = cloud_transformed_->at(col, row).x;
-        pose.pose.position.y = cloud_transformed_->at(col, row).y;
-        pose.pose.position.z = cloud_transformed_->at(col, row).z;
+
+        int cloud_offset = 40;
+
+        pose.pose.position.x = cloud_transformed_->at(col+cloud_offset, row).x;
+        pose.pose.position.y = cloud_transformed_->at(col+cloud_offset, row).y;
+        pose.pose.position.z = cloud_transformed_->at(col+cloud_offset, row).z;
         
         // FIND CLOSEST POINTS
         pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT> ());

@@ -24,6 +24,8 @@
 
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
+#include <std_msgs/UInt8.h>
+
 class SaraArm
 {
 public:
@@ -37,7 +39,9 @@ private:
     moveit::planning_interface::MoveGroupInterface* group_;
     
     ros::Subscriber cloud_input_sub_;
+    ros::Subscriber plan_type_sub_;
 
+    void planTypeCbk(const std_msgs::UInt8::ConstPtr& msg);
     void cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void evaluate_plan(moveit::planning_interface::MoveGroupInterface &group);
     bool result_;
@@ -45,6 +49,10 @@ private:
     ros::Publisher marker_pub;
     ros::Publisher array_pub;
     ros::Subscriber sub_joint_;
+
+    int plan_type_;
+    bool moveit_ ;
+
     // update current state and pose
     std::string pause_;
     boost::mutex mutex_state_;

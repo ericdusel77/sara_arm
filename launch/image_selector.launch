@@ -7,9 +7,9 @@
         <arg name="ordered_pc" value="true" />
     </include>
 
-    <node pkg="tf" type="static_transform_publisher" name="world_to_camera" args="-0.13 -0.13 0.3 0.0 0.0 0.0 /world /camera_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="world_to_camera" args="-0.13 -0.13 0.18 0.0 0.0 0.0 /world /camera_link 10" />
 
-    <node pkg="sara_arm" type="pcp_sara" name="pcp_sara_service" />
+    <node pkg="sara_arm" type="pcp_sara" name="pcp_sara_service"  output="screen"/>
 
     <node name="clicker" pkg="sara_arm" type="image_converter.py" output="screen"/>
 

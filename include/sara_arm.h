@@ -8,6 +8,8 @@
 #include <tf/transform_broadcaster.h>
 #include <tf2_eigen/tf2_eigen.h>
 #include <kinova_msgs/SetFingersPositionAction.h>
+#include <kinova_msgs/ArmPoseAction.h>
+#include <kinova_msgs/ArmPoseGoal.h>
 
 #include <moveit/kinematic_constraints/utils.h>
 
@@ -25,6 +27,8 @@
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
 #include <std_msgs/UInt8.h>
+
+#include <actionlib/client/simple_action_client.h>
 
 class SaraArm
 {
@@ -60,11 +64,15 @@ private:
     sensor_msgs::JointState current_state_;
     geometry_msgs::PoseStamped current_pose_;
 
+    geometry_msgs::Pose c_goal;
+
     void get_current_state(const sensor_msgs::JointStateConstPtr &msg);
     std::string robot_type_;
     bool robot_connected_;
     actionlib::SimpleActionClient<kinova_msgs::SetFingersPositionAction>* finger_client_;
+    actionlib::SimpleActionClient<kinova_msgs::ArmPoseAction>* pose_client_;
     bool gripper_action(double gripper_rad);
+    void pose_goal(geometry_msgs::PoseStamped &endeffector_pose);
 };
 
 

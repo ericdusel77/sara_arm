@@ -36,6 +36,7 @@ class image_converter:
 
     gui_img = self.build_gui(msg_img)
 
+    # DISPLAY SELECTION
     if not self.selection is None:
       cv2.line(gui_img, (self.selection[0]-12,self.selection[1]), (self.selection[0]+12,self.selection[1]), (0, 0, 0), 6)
       cv2.line(gui_img, (self.selection[0],self.selection[1]-12), (self.selection[0],self.selection[1]+12), (0, 0, 0), 6)
@@ -45,12 +46,6 @@ class image_converter:
     cv2.imshow("Image window", gui_img)
     cv2.setMouseCallback("Image window", self.click, msg_img.shape)
     cv2.waitKey(3)
-
-    # try:
-    #   self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_img, "bgr8"))
-    # except CvBridgeError as e:
-    #   print(e)
-
 
   # Image segmentation using KMEANS
   def kmeans(self, cv_img):
@@ -173,6 +168,21 @@ class image_converter:
 
     cv2.rectangle(gui, (border,border+img_h+self.button_h), (border+img_w,border+img_h+border),edge_color, 3)
     cv2.arrowedLine(gui,(border+int(img_w/2),self.button_h+border+img_h+int(3*self.button_h/4)),(border+int(img_w/2),self.button_h+border+img_h+int(3*self.button_h/4)+1),edge_color,8,tipLength=30)
+
+    cv2.rectangle(gui, (int(border/4),int(border/4)), (int(3*border/4),int(3*border/4)),(255,102,102), 3)
+
+    cv2.circle(gui, (3*self.button_h+img_w,3*self.button_h+img_h),30,(64,226,160), 3)
+
+    width = 20
+    height = 60
+    middle = 20
+    cv2.line(gui,(3*self.button_h+img_w,int(self.button_h/2)-10),(3*self.button_h+img_w-width, int(self.button_h/2)+middle),(124,178,232), 3)
+    cv2.line(gui,(3*self.button_h+img_w,int(self.button_h/2)-10),(3*self.button_h+img_w+width, int(self.button_h/2)+middle),(124,178,232), 3)
+    cv2.line(gui,(3*self.button_h+img_w,int(self.button_h/2)+height),(3*self.button_h+img_w-width, int(self.button_h/2)+middle),(124,178,232), 3)
+    cv2.line(gui,(3*self.button_h+img_w,int(self.button_h/2)+height),(3*self.button_h+img_w+width, int(self.button_h/2)+middle),(124,178,232), 3)
+
+    cv2.line(gui,(self.button_h-30, 3*self.button_h+img_h),(self.button_h+30, 3*self.button_h+img_h),(255,105,248), 3)
+    cv2.line(gui,(self.button_h, 3*self.button_h+img_h-30),(self.button_h, 3*self.button_h+img_h+30),(255,105,248), 3)
 
     return gui
 

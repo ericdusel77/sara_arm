@@ -60,7 +60,11 @@
   <build_depend>moveit_ros_planning_interface</build_depend>
   <build_depend>kinova_msgs</build_depend>
   <build_depend>moveit_visual_tools</build_depend>
+  <build_depend>actionlib</build_depend>
+  <build_depend>actionlib_msgs</build_depend>
 
+  <exec_depend>actionlib</exec_depend>
+  <exec_depend>actionlib_msgs</exec_depend>
   <exec_depend>moveit_visual_tools</exec_depend>
   <exec_depend>kinova_msgs</exec_depend>
   <exec_depend>moveit_core</exec_depend>

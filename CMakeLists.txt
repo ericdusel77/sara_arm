@@ -8,6 +8,8 @@ project(sara_arm)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+    actionlib
+    actionlib_msgs
     pcl_msgs
     pcl_ros
     moveit_core

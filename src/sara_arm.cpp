@@ -41,6 +41,13 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
     }
     gripper_action(FINGER_MAX); 
 
+    // SET UP POSE ACTION CLIENT TO USE KINOVA IK 
+    pose_client_ = new actionlib::SimpleActionClient<kinova_msgs::ArmPoseAction> 
+            ("/" + robot_type_ + "_driver/pose_action/tool_pose", false);
+    while(robot_connected_ && !pose_client_->waitForServer(ros::Duration(5.0))){
+      ROS_INFO("Waiting for the pose action server to come up");
+    }
+
 }
 
 
@@ -98,7 +105,9 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     // FK TO GET STATE AT HOME
     const Eigen::Isometry3d& state_home = robot_state->getGlobalLinkTransform(group_->getEndEffectorLink());
     // CONVERT TO GEO_MSG
-    geometry_msgs::Pose home_pose = tf2::toMsg(state_home);
+    geometry_msgs::PoseStamped home_stamped;
+    home_stamped.header = msg->header;
+    home_stamped.pose = tf2::toMsg(state_home);
 
     if (plan_type_ == 1){
         /////
@@ -176,55 +185,40 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
         std::vector<double> joint_values = j.back().positions;
         robot_state->setJointGroupPositions(joint_model_group, joint_values);
         const Eigen::Isometry3d& state_goal = robot_state->getGlobalLinkTransform(group_->getEndEffectorLink());
-        geometry_msgs::Pose c_goal = tf2::toMsg(state_goal);
+        c_goal = tf2::toMsg(state_goal);
 
         // CONVERT CONSTRAINED POSE TO BUTTON
         tf::poseMsgToTF(c_goal, button);
     
-        moveit_ = true;
-
-    } else if (plan_type_ == 2){
-        
-        std::cout<<"NO ACTION FOR THIS BUTTON"<<std::endl;
-        moveit_ = false;
-        return;
-
-    } else if (plan_type_ == 3){
-        
-        moveit_ = true;
     } else if (plan_type_ == 4){
-        
-        std::cout<<"NO ACTION FOR THIS BUTTON"<<std::endl;
-        moveit_ = false;
-        return;
+        c_goal = msg->pose;
     }
 
-    if (moveit_){
-        // USE FOR GETTING PRE-BUTTON POSE
-        tf::Quaternion q = button.getRotation();
-        tf::Vector3 r_col = button.getBasis().getColumn(2);
+    // USE FOR GETTING PRE-BUTTON POSE
+    tf::Quaternion q = button.getRotation();
+    tf::Vector3 r_col = button.getBasis().getColumn(2);
         
-        // FIND APPRAOCH POSE FROM BUTTON POSE WITH ADDED OFFSET
-        tf::Pose approach;
-        float offset = 0.05;
-        tf::Vector3 approach_xyz(-r_col.getX()*offset + button_xyz[0], -r_col.getY()*offset + button_xyz[1], -r_col.getZ()*offset + button_xyz[2]);
-        approach.setOrigin(approach_xyz);
-        // USE SAME ORIENTATION QUATERNION AS BUTTON
-        approach.setRotation(q);
+    // FIND APPRAOCH POSE FROM BUTTON POSE WITH ADDED OFFSET
+    tf::Pose approach;
+    float offset = 0.05;
+    tf::Vector3 approach_xyz(-r_col.getX()*offset + button_xyz[0], -r_col.getY()*offset + button_xyz[1], -r_col.getZ()*offset + button_xyz[2]);
+    approach.setOrigin(approach_xyz);
+    // USE SAME ORIENTATION QUATERNION AS BUTTON
+    approach.setRotation(q);
 
-        // CONVERT TF TO POSE MSG
-        geometry_msgs::PoseStamped approach_msg;
-        tf::poseTFToMsg(approach, approach_msg.pose);
-        approach_msg.header = msg->header;
-        marker_pub.publish(approach_msg);
+    // CONVERT TF TO POSE MSG
+    geometry_msgs::PoseStamped approach_msg;
+    tf::poseTFToMsg(approach, approach_msg.pose);
+    approach_msg.header = msg->header;
+    marker_pub.publish(approach_msg);
 
+    if (plan_type_ == 1 | plan_type_ == 4){
         // CREATE TRAJECTORY
         std::vector<geometry_msgs::Pose> waypoints;
         waypoints.push_back(approach_msg.pose);  // APPROACH
-        waypoints.push_back(msg->pose);  // GOAL (BUTTON)
-        // waypoints.push_back(c_goal);  // GOAL (BUTTON)
+        waypoints.push_back(c_goal);  // GOAL (BUTTON)
         waypoints.push_back(approach_msg.pose);  // APPROACH
-        waypoints.push_back(home_pose);  // HOME
+        waypoints.push_back(home_stamped.pose);  // HOME
         moveit_msgs::RobotTrajectory trajectory;
         double fraction = group_->computeCartesianPath(waypoints,
                                                         0.01,  // eef_step - path to be interpolated at this resolution
@@ -233,13 +227,20 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
         // EXECUTE TRAJECTORY IF FULL PATH IS FOUND
         if (fraction == 1){
-            ROS_INFO_STREAM("Press 'y'' to start motion plan ...");
-            std::cin >> pause_;
-            if (pause_ == "y" || pause_ == "Y"){
-                group_->execute(trajectory);
-            }
+            group_->execute(trajectory);
         }
+    } else if (plan_type_ == 2) {
+        // APPROACH
+        pose_goal(approach_msg);
+        // BUTTON
+        geometry_msgs::PoseStamped pose_endeffector = *msg;
+        pose_goal(pose_endeffector);
+        // APPROACH
+        pose_goal(approach_msg);
+        // HOME
+        pose_goal(home_stamped);
     }
+
 }
 
 /**
@@ -267,6 +268,26 @@ bool SaraArm::gripper_action(double finger_turn)
         ROS_WARN_STREAM("The gripper action timed-out");
         return false;
     }
+}
+
+void SaraArm::pose_goal(geometry_msgs::PoseStamped &endeffector_pose)
+{
+    kinova_msgs::ArmPoseGoal goal;
+    goal.pose = endeffector_pose;
+
+    ROS_INFO_STREAM("Goal parent frame is : " << goal.pose.header.frame_id);
+
+    ROS_INFO_STREAM("Goal to arm pose actionlib: \n"
+                    << "  x: " << goal.pose.pose.position.x
+                    << ", y: " << goal.pose.pose.position.y
+                    << ", z: " << goal.pose.pose.position.z
+                    << ", qx: " << goal.pose.pose.orientation.x
+                    << ", qy: " << goal.pose.pose.orientation.y
+                    << ", qz: " << goal.pose.pose.orientation.z
+                    << ", qw: " << goal.pose.pose.orientation.w << std::endl);
+
+    pose_client_->sendGoalAndWait(goal, ros::Duration(10), ros::Duration(10));
+
 }
 
 int main(int argc, char **argv)

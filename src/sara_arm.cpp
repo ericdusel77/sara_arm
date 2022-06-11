@@ -229,7 +229,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
         if (fraction == 1){
             group_->execute(trajectory);
         }
-    } else if (plan_type_ == 2) {
+    } else if (plan_type_ == 3) {
         // APPROACH
         pose_goal(approach_msg);
         // BUTTON

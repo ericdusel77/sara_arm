@@ -17,8 +17,8 @@ class image_converter:
     # self.image_pub = rospy.Publisher("image_topic_2",Image)
 
     self.bridge = CvBridge()
-    # self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
-    self.image_sub = rospy.Subscriber("rgb/image_raw",Image,self.callback)
+    self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
+    # self.image_sub = rospy.Subscriber("rgb/image_raw",Image,self.callback)
 
     self.click_pub = rospy.Publisher("button_pose",PoseStamped,queue_size=10)
     self.type_pub = rospy.Publisher("plan_type",UInt8,queue_size=10)

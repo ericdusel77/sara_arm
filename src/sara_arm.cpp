@@ -109,7 +109,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     home_stamped.header = msg->header;
     home_stamped.pose = tf2::toMsg(state_home);
 
-    if (plan_type_ == 1){
+    if (plan_type_ == 4 | plan_type_ == 2){
         /////
         // USE MOVEIT! API (NOT MOVEGROUPINTERFACE) TO REDUCE CONSTRAINT ON APPROACH/BUTTON ORIENTATION
         // SET ROBOT STATE TO CURRENT STATE
@@ -190,7 +190,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
         // CONVERT CONSTRAINED POSE TO BUTTON
         tf::poseMsgToTF(c_goal, button);
     
-    } else if (plan_type_ == 4){
+    } else if (plan_type_ == 1){
         c_goal = msg->pose;
     }
 
@@ -229,11 +229,14 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
         if (fraction == 1){
             group_->execute(trajectory);
         }
-    } else if (plan_type_ == 3) {
+    } else if (plan_type_ == 3 | plan_type_ == 2) {
         // APPROACH
         pose_goal(approach_msg);
         // BUTTON
         geometry_msgs::PoseStamped pose_endeffector = *msg;
+        if (plan_type_ == 2){
+            pose_endeffector.pose = c_goal;
+        }
         pose_goal(pose_endeffector);
         // APPROACH
         pose_goal(approach_msg);

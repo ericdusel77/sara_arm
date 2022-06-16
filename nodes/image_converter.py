@@ -17,7 +17,8 @@ class image_converter:
     # self.image_pub = rospy.Publisher("image_topic_2",Image)
 
     self.bridge = CvBridge()
-    self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
+    # self.image_sub = rospy.Subscriber("camera/color/image_raw",Image,self.callback)
+    self.image_sub = rospy.Subscriber("rgb/image_raw",Image,self.callback)
 
     self.click_pub = rospy.Publisher("button_pose",PoseStamped,queue_size=10)
     self.type_pub = rospy.Publisher("plan_type",UInt8,queue_size=10)
@@ -66,22 +67,22 @@ class image_converter:
       img_h = param[0]
       img_w = param[1]
 
-      # TOP LEFT BUTTON
+      # TOP LEFT BUTTON (SQUARE)
       if x < 2*self.button_h and y < 2*self.button_h:
         self.type_pub.publish(1)
         self.send_command()
       
-      # TOP RIGHT BUTTON
+      # TOP RIGHT BUTTON (DIAMOND)
       elif x > 2*self.button_h + img_w and y < 2*self.button_h:
         self.type_pub.publish(2)
         self.send_command()
 
-      # BOTTOM LEFT BUTTON
+      # BOTTOM LEFT BUTTON (PLUS)
       elif x < 2*self.button_h and y > 2*self.button_h + img_h:
         self.type_pub.publish(3)
         self.send_command()
       
-      # BOTTOM RIGHT BUTTON
+      # BOTTOM RIGHT BUTTON (CIRCLE)
       elif x > 2*self.button_h + img_w and y > 2*self.button_h + img_h:
         self.type_pub.publish(4)
         self.send_command()

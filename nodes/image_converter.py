@@ -10,6 +10,7 @@ from std_msgs.msg import UInt8
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from sara_arm.srv import *
+from screeninfo import get_monitors
 
 class image_converter:
 
@@ -29,11 +30,18 @@ class image_converter:
 
     self.selection = None
 
+    self.monitors = get_monitors()
+    self.monitor_h = self.monitors[0].height
+    self.monitor_w = self.monitors[0].width
+    self.dim = (self.monitor_w-4*self.button_h, self.monitor_h-4*self.button_h)
+
   def callback(self,data):
     try:
       msg_img = self.bridge.imgmsg_to_cv2(data, "bgr8")
     except CvBridgeError as e:
       print(e)
+
+    self.shape_og = msg_img.shape
 
     gui_img = self.build_gui(msg_img)
 
@@ -44,8 +52,12 @@ class image_converter:
       cv2.line(gui_img, (self.selection[0]-10,self.selection[1]), (self.selection[0]+10,self.selection[1]), (0, 255, 0), 2)
       cv2.line(gui_img, (self.selection[0],self.selection[1]-10), (self.selection[0],self.selection[1]+10), (0, 255, 0), 2)
 
+    cv2.namedWindow("Image window", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("Image window", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
     cv2.imshow("Image window", gui_img)
-    cv2.setMouseCallback("Image window", self.click, msg_img.shape)
+    # cv2.setMouseCallback("Image window", self.click, msg_img.shape)
+    cv2.setMouseCallback("Image window", self.click, (self.dim[1],self.dim[0]))
     cv2.waitKey(3)
 
   # Image segmentation using KMEANS
@@ -93,40 +105,42 @@ class image_converter:
       
       # MOVE LEFT FAST
       elif x<self.button_h and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-        self.selection = (self.selection[0]-10,self.selection[1])
+        self.selection = (max(self.selection[0]-10,2*self.button_h),self.selection[1])
       
       # MOVE LEFT SLOW
       elif x>self.button_h and x<2*self.button_h and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-        self.selection = (self.selection[0]-1,self.selection[1])
+        self.selection = (max(self.selection[0]-1,2*self.button_h),self.selection[1])
 
       # MOVE RIGHT SLOW
       elif x>2*self.button_h+img_w and x<3*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-        self.selection = (self.selection[0]+1,self.selection[1])
+        self.selection = (min(self.selection[0]+1,2*self.button_h+img_w),self.selection[1])
       
       # MOVE RIGHT FAST
       elif x>3*self.button_h+img_w and y > 2*self.button_h and y <2*self.button_h+img_h and not self.selection is None:
-        self.selection = (self.selection[0]+10,self.selection[1])
+        self.selection = (min(self.selection[0]+10,2*self.button_h+img_w),self.selection[1])
 
       # MOVE UP FAST
       elif x > 2*self.button_h and x < 2*self.button_h+img_w and y < self.button_h and not self.selection is None:
-        self.selection = (self.selection[0],self.selection[1]-10)
+        self.selection = (self.selection[0],max(self.selection[1]-10,2*self.button_h))
 
       # MOVE UP SLOW
       elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > self.button_h and y < 2*self.button_h and not self.selection is None:
-        self.selection = (self.selection[0],self.selection[1]-1)
+        self.selection = (self.selection[0],max(self.selection[1]-1,2*self.button_h))
 
       # MOVE DOWN SLOW
       elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 2*self.button_h+img_h and y < 3*self.button_h+img_h and not self.selection is None:
-        self.selection = (self.selection[0],self.selection[1]+1)
+        self.selection = (self.selection[0],min(self.selection[1]+1,2*self.button_h+img_h))
 
       # MOVE DOWN FAST
       elif x > 2*self.button_h and x < 2*self.button_h+img_w and y > 3*self.button_h+img_h and not self.selection is None:
-        self.selection = (self.selection[0],self.selection[1]+10)
+        self.selection = (self.selection[0],min(self.selection[1]+10,2*self.button_h+img_h))
 
   def send_command(self):
       if not self.selection is None: 
         try:
-          resp1 = self.pcp_service(self.selection[0]-2*self.button_h,self.selection[1]-2*self.button_h)
+          shift_selection = self.selection[0]-2*self.button_h,self.selection[1]-2*self.button_h
+          transformed_selection = (round(shift_selection[0] * (self.shape_og[1] / self.dim[0])), round(shift_selection[1] * (self.shape_og[0] / self.dim[1])))
+          resp1 = self.pcp_service(transformed_selection[0],transformed_selection[1])
           self.click_pub.publish(resp1.cloud_in_pose)
 
         except rospy.ServiceException as e:
@@ -134,6 +148,7 @@ class image_converter:
       
   def build_gui(self, msg_img):
     border = 2*self.button_h
+    msg_img = cv2.resize(msg_img, self.dim, interpolation=cv2.INTER_AREA)
     img_h = msg_img.shape[0]
     img_w = msg_img.shape[1]
 

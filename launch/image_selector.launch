@@ -6,7 +6,7 @@
         <arg name="filters" value="pointcloud" />
         <arg name="ordered_pc" value="true" />
     </include>
-    <node pkg="tf" type="static_transform_publisher" name="world_to_rscamera" args="-0.13 -0.13 0.18 0.0 0.0 0.0 /world /camera_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="world_to_rscamera" args="0.01 -0.15 -0.12 -1.5708 -0.3 0.0 /world /camera_link 10" />
 
     <!-- <include file="$(find azure_kinect_ros_driver)/launch/driver.launch"/> -->
     <!-- <node pkg="tf" type="static_transform_publisher" name="world_to_akcamera" args="-0.13 -0.13 0.18 0.0 0.0 0.0 /world /camera_base 10" /> -->

@@ -29,7 +29,7 @@ SaraArm::SaraArm(ros::NodeHandle &nh):
     group_ = new moveit::planning_interface::MoveGroupInterface("arm");
 
     // SEND ROBOT HOME ON LAUNCH OF SARA
-    home = {279*M_PI/180, 170*M_PI/180, 49*M_PI/180, 227*M_PI/180, 93*M_PI/180, 80*M_PI/180};
+    home = {9*M_PI/180, 170*M_PI/180, 49*M_PI/180, 227*M_PI/180, 93*M_PI/180, 80*M_PI/180};
     group_->setJointValueTarget(home);
     evaluate_plan(*group_);
 

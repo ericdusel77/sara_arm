@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <include file="$(find kinova_bringup)/launch/kinova_robot.launch"/>
+
+    <include file="$(find j2n6s300_moveit_config)/launch/j2n6s300_demo.launch"/>
+
+    <include file="$(find sara_arm)/launch/image_selector.launch"/>
+
+    <node name="sara_arm_system" pkg="sara_arm" type="sara_arm" output="screen"/>
+
+</launch>

@@ -89,7 +89,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     tf::poseMsgToTF(msg->pose, button);
     tf::Vector3 button_xyz = button.getOrigin();
 
-    if (button_xyz[0] < 0){
+    if (button_xyz[1] > 0){
         std::cout<<"Found incorrect pose. Try pressing a different point."<<std::endl;
         return;
     }

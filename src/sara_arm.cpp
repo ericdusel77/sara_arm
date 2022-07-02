@@ -77,6 +77,21 @@ void SaraArm::evaluate_plan(moveit::planning_interface::MoveGroupInterface &grou
 void SaraArm::planTypeCbk(const std_msgs::UInt8::ConstPtr& msg)
 {
     plan_type_ = msg->data;
+
+    constrain_wrist_ = true;
+
+    // CONSTRAINED WRIST
+    if (plan_type_ == 2) {
+        task_ = 2;
+    } else {
+        task_ = 1;
+    }
+
+    if (plan_type_ == 4 | plan_type_ == 1 | plan_type_ == 2) {
+        moveit_ = true;
+    } else {
+        moveit_ = false;
+    }
 }
 
 void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -89,7 +104,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     tf::poseMsgToTF(msg->pose, button);
     tf::Vector3 button_xyz = button.getOrigin();
 
-    if (button_xyz[1] > 0){
+    if (button_xyz[1] > -0.3){
         std::cout<<"Found incorrect pose. Try pressing a different point."<<std::endl;
         return;
     }
@@ -109,7 +124,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     home_stamped.header = msg->header;
     home_stamped.pose = tf2::toMsg(state_home);
 
-    if (plan_type_ == 4 | plan_type_ == 2){
+    if (!constrain_wrist_){
         /////
         // USE MOVEIT! API (NOT MOVEGROUPINTERFACE) TO REDUCE CONSTRAINT ON APPROACH/BUTTON ORIENTATION
         // SET ROBOT STATE TO CURRENT STATE
@@ -190,7 +205,7 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
         // CONVERT CONSTRAINED POSE TO BUTTON
         tf::poseMsgToTF(c_goal, button);
     
-    } else if (plan_type_ == 1){
+    } else if (constrain_wrist_ && moveit_){
         c_goal = msg->pose;
     }
 
@@ -212,12 +227,16 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
     approach_msg.header = msg->header;
     marker_pub.publish(approach_msg);
 
-    if (plan_type_ == 1 | plan_type_ == 4){
+    if (moveit_){
         // CREATE TRAJECTORY
         std::vector<geometry_msgs::Pose> waypoints;
-        waypoints.push_back(approach_msg.pose);  // APPROACH
+        if (task_ == 1){
+            waypoints.push_back(approach_msg.pose);  // APPROACH
+        }
         waypoints.push_back(c_goal);  // GOAL (BUTTON)
-        waypoints.push_back(approach_msg.pose);  // APPROACH
+        if (task_ == 1){
+            waypoints.push_back(approach_msg.pose);  // APPROACH
+        }
         waypoints.push_back(home_stamped.pose);  // HOME
         moveit_msgs::RobotTrajectory trajectory;
         double fraction = group_->computeCartesianPath(waypoints,
@@ -229,12 +248,12 @@ void SaraArm::cloudInputCbk(const geometry_msgs::PoseStamped::ConstPtr& msg)
         if (fraction == 1){
             group_->execute(trajectory);
         }
-    } else if (plan_type_ == 3 | plan_type_ == 2) {
+    } else {
         // APPROACH
         pose_goal(approach_msg);
         // BUTTON
         geometry_msgs::PoseStamped pose_endeffector = *msg;
-        if (plan_type_ == 2){
+        if (!constrain_wrist_){
             pose_endeffector.pose = c_goal;
         }
         pose_goal(pose_endeffector);

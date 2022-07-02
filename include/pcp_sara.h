@@ -16,6 +16,8 @@
 #include "sara_arm/image_to_cloud_point.h"
 #include <visualization_msgs/Marker.h>
 
+#include <std_msgs/UInt8.h>
+
 class PcpSara {
     typedef pcl::PointXYZRGB PointT;
     typedef pcl::Normal PointNT;
@@ -37,6 +39,11 @@ class PcpSara {
         bool pc_received_ = false;
         sensor_msgs::PointCloud2 cloud_raw_ros_;
         boost::mutex pc_mutex_;
+
+        int plan_type_;
+        int task_; // 1 == press button, 2 == card
+        ros::Subscriber plan_type_sub_;
+        void planTypeCbk(const std_msgs::UInt8::ConstPtr& msg);
 
         // params 
         std::string point_cloud_topic_, fixed_frame_;

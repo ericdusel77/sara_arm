@@ -10,12 +10,27 @@ PcpSara::PcpSara(ros::NodeHandle n) :
 
     // Subscriber 
     point_cloud_sub_ = nh_.subscribe(point_cloud_topic_, 10, &PcpSara::pointCloudCb, this);
+    // SUBSCRIBE TO PLAN_TYPE
+    plan_type_sub_ = nh_.subscribe("plan_type", 1, &PcpSara::planTypeCbk, this);
 }
 
 void PcpSara::pointCloudCb(const sensor_msgs::PointCloud2ConstPtr &msg) {
     boost::mutex::scoped_lock lock(pc_mutex_);
     cloud_raw_ros_ = *msg;
     pc_received_ = true;
+}
+
+void PcpSara::planTypeCbk(const std_msgs::UInt8::ConstPtr& msg)
+{
+    plan_type_ = msg->data;
+
+    // CONSTRAINED WRIST
+    if (plan_type_ == 2) {
+        task_ = 2;
+    } else {
+        task_ = 1;
+    }
+
 }
 
 bool PcpSara::transformPointCloud() {
@@ -78,7 +93,10 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
     if (pcl::isFinite(cloud_transformed_->at(col, row))) {
         // SET POSE POSITION
 
-        int cloud_offset = 40;
+        int cloud_offset = 20;
+        if (plan_type_ == 3){
+            cloud_offset = 40;
+        } 
 
         pose.pose.position.x = cloud_transformed_->at(col+cloud_offset, row).x;
         pose.pose.position.y = cloud_transformed_->at(col+cloud_offset, row).y;
@@ -101,12 +119,14 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
         double phi = atan2(plane_parameters[1],plane_parameters[0]);
         double theta = asin(-plane_parameters[2]);
 
-        if (abs(phi) > M_PI/2){
+        if (phi > 0){
             phi = phi + M_PI;
             theta = -theta;
         }
 
-        theta = theta + M_PI/2;
+        if (task_ == 1){
+            theta = theta + M_PI/2;
+        }
     
         tf::Quaternion q;
         tf::Matrix3x3 rot;
@@ -123,6 +143,26 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
         pose.pose.orientation.y = q.y();
         pose.pose.orientation.z = q.z();
         pose.pose.orientation.w = q.w();
+
+        if (task_ == 2){
+            // FIND APPRAOCH POSE FROM BUTTON POSE WITH ADDED OFFSET
+            tf::Pose pose_tf;
+            tf::poseMsgToTF(pose.pose, pose_tf);
+            tf::Vector3 r_col_a = pose_tf.getBasis().getColumn(0);
+
+            // MOVE OUT OF PLANE
+            float offset_x = 0.05;
+            tf::Vector3 tmp_xyz(-r_col_a.getX()*offset_x + pose.pose.position.x, -r_col_a.getY()*offset_x + pose.pose.position.y, -r_col_a.getZ()*offset_x + pose.pose.position.z);
+
+            // MOVE DOWN TO PLACE CARD AT DESTINATION
+            float offset_z = 0.1;
+            tf::Vector3 r_col = pose_tf.getBasis().getColumn(2);
+            tf::Vector3 approach_xyz(-r_col.getX()*offset_z + tmp_xyz.getX(), -r_col.getY()*offset_z + tmp_xyz.getY(), -r_col.getZ()*offset_z + tmp_xyz.getZ());
+
+            pose.pose.position.x = approach_xyz.getX();
+            pose.pose.position.y = approach_xyz.getY();
+            pose.pose.position.z = approach_xyz.getZ();
+        }
 
         return true;
     } else {

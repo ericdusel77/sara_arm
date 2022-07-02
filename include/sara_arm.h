@@ -55,7 +55,9 @@ private:
     ros::Subscriber sub_joint_;
 
     int plan_type_;
+    bool constrain_wrist_ ;
     bool moveit_ ;
+    int task_; // 1 == press button, 2 == card
 
     // update current state and pose
     std::string pause_;

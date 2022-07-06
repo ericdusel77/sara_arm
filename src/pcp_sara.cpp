@@ -4,8 +4,7 @@ PcpSara::PcpSara(ros::NodeHandle n) :
         nh_(n), cloud_transformed_(new CloudT){
 
     // General parameters
-    point_cloud_topic_ = "/camera/depth/color/points";
-    // point_cloud_topic_ = "points2";
+    point_cloud_topic_ = "point_cloud";
     fixed_frame_ = "world";
 
     // Subscriber 

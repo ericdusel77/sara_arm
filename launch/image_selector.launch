@@ -2,15 +2,18 @@
 
 <launch>
 
+    <remap from="/camera/depth/color/points" to="/point_cloud" />
+    <remap from="/camera/color/image_raw" to="/image_topic" />
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
         <arg name="filters" value="pointcloud" />
         <arg name="ordered_pc" value="true" />
     </include>
-    <!-- <node pkg="tf" type="static_transform_publisher" name="world_to_rscamera" args="0.01 -0.15 -0.12 -1.5708 -0.3 0.0 /world /camera_link 10" /> -->
     <node pkg="tf" type="static_transform_publisher" name="world_to_rscamera" args="0.03 -0.13 0.09 -1.5708 -0.3 0.0 /world /camera_link 10" />
 
-    <!-- <include file="$(find azure_kinect_ros_driver)/launch/driver.launch"/> -->
-    <!-- <node pkg="tf" type="static_transform_publisher" name="world_to_akcamera" args="-0.13 -0.13 0.18 0.0 0.0 0.0 /world /camera_base 10" /> -->
+    <!-- <remap from="/points2" to="/point_cloud" />
+    <remap from="/rgb/image_raw" to="/image_topic" />
+    <include file="$(find azure_kinect_ros_driver)/launch/driver.launch" />
+    <node pkg="tf" type="static_transform_publisher" name="world_to_akcamera" args="0.0 -0.18 0.0 -1.5708 -0.3 0.0 /world /camera_base 10" /> -->
 
     <node pkg="sara_arm" type="pcp_sara" name="pcp_sara_service"  output="screen"/>
 

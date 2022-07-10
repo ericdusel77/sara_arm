@@ -51,19 +51,7 @@ TargetTrajectoriesSara::TargetTrajectoriesSara(::ros::NodeHandle& nodeHandle, co
   targetTrajectoriesPublisherPtr_.reset(new TargetTrajectoriesRosPublisher(nodeHandle, topicPrefix));
 
   cloud_input_sub_ = nodeHandle.subscribe("button_pose", 1, &TargetTrajectoriesSara::processFeedback, this);
-  // // create an interactive marker for our server
-  // menuHandler_.insert("Send target pose", boost::bind(&TargetTrajectoriesSara::processFeedback, this, _1));
 
-  // // create an interactive marker for our server
-  // auto interactiveMarker = createInteractiveMarker();
-
-  // // add the interactive marker to our collection &
-  // // tell the server to call processFeedback() when feedback arrives for it
-  // server_.insert(interactiveMarker);  //, boost::bind(&TargetTrajectoriesSara::processFeedback, this, _1));
-  // menuHandler_.apply(server_, interactiveMarker.name);
-
-  // // 'commit' changes and send to all clients
-  // server_.applyChanges();
 }
 
 /******************************************************************************************************/

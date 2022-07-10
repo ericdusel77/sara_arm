@@ -52,7 +52,7 @@ class image_converter:
       cv2.line(gui_img, (self.selection[0],self.selection[1]-10), (self.selection[0],self.selection[1]+10), (0, 255, 0), 2)
 
     cv2.namedWindow("Image window", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("Image window", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    # cv2.setWindowProperty("Image window", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     cv2.imshow("Image window", gui_img)
     # cv2.setMouseCallback("Image window", self.click, msg_img.shape)

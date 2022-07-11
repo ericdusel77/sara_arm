@@ -69,7 +69,7 @@
   <depend>kinova_msgs</depend>
   <depend>actionlib</depend>
   <depend>actionlib_msgs</depend>
-  <depend>ocs2_ros_interfaces</depend>
+  <depend>ocs2_mobile_manipulator_ros</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

@@ -15,7 +15,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
     kinova_msgs
     moveit_visual_tools
     tf2_eigen
-    ocs2_ros_interfaces
+    ocs2_mobile_manipulator_ros
 )
 
 find_package(catkin REQUIRED COMPONENTS
@@ -66,6 +66,33 @@ target_link_libraries(pcp_sara ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 add_executable(sara_arm src/sara_arm.cpp)
 target_link_libraries(sara_arm ${catkin_LIBRARIES})
 
-add_executable(ocs2_sara src/ocs2_sara.cpp)
-target_link_libraries(ocs2_sara ${catkin_LIBRARIES})
+add_library(loop_sara src/ocs2/loop_sara.cpp)
+
+# MRT node
+add_executable(mrt_sara
+  src/ocs2/mrt_sara.cpp
+  src/ocs2/visualization_sara.cpp
+)
+add_dependencies(mrt_sara
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(mrt_sara
+  ${catkin_LIBRARIES}
+  loop_sara
+)
+target_compile_options(mrt_sara PUBLIC ${FLAGS})
+
+# Target node
+add_executable(target_sara
+src/ocs2/target_sara.cpp
+)
+add_dependencies(target_sara
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(target_sara
+  ${catkin_LIBRARIES}
+)
+target_compile_options(target_sara PUBLIC ${FLAGS})
+
+
 

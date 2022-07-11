@@ -22,15 +22,15 @@
             </include>
       </group>
 
-      <node if="$(arg debug)" pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_mpc_node" name="mobile_manipulator_mpc_node" 
+      <node if="$(arg debug)" pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_mpc_node" name="mpc_node" 
             output="screen" launch-prefix="gnome-terminal -- gdb -ex run --args" />
-      <node unless="$(arg debug)" pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_mpc_node" name="mobile_manipulator_mpc_node" 
+      <node unless="$(arg debug)" pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_mpc_node" name="mpc_node" 
             output="screen" launch-prefix="" />
 
-      <node pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_dummy_mrt_node" name="mobile_manipulator_dummy_mrt_node" 
+      <node pkg="sara_arm" type="mrt_sara" name="mrt_node" 
             output="screen" launch-prefix="gnome-terminal --" />
 
-      <node if="$(arg rviz)" pkg="sara_arm" type="ocs2_sara" name="mobile_manipulator_target" 
+      <node if="$(arg rviz)" pkg="sara_arm" type="target_sara" name="target_node" 
             output="screen" launch-prefix="" />
 
 </launch>

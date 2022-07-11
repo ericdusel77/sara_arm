@@ -27,7 +27,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#include <ocs2_sara.h>
+#include <ocs2/target_sara.h>
 
 #include <ocs2_msgs/mpc_observation.h>
 #include <ocs2_ros_interfaces/common/RosMsgConversions.h>

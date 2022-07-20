@@ -67,6 +67,7 @@
   <depend>moveit_ros_planning_interface</depend>
   <depend>moveit_visual_tools</depend>
   <depend>kinova_msgs</depend>
+  <depend>kinova_driver</depend>
   <depend>actionlib</depend>
   <depend>actionlib_msgs</depend>
   <depend>ocs2_mobile_manipulator_ros</depend>

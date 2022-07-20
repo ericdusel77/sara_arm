@@ -4,7 +4,61 @@
 
     <include file="$(find kinova_bringup)/launch/kinova_robot.launch"/>
 
-    <include file="$(find j2n6s300_moveit_config)/launch/j2n6s300_demo.launch"/>
+    <param name="robot_type" value="j2n6s300" />
+    <param name="/pick_place_demo/arm/solve_type" value="Manipulation2" />
+    <param name="/pick_place_demo/arm/kinematics_solver_timeout" value="0.05" />
+
+    <!-- By default, we do not start a database (it can be large) -->
+    <arg name="db" default="false" />
+    <!-- Allow user to specify database location -->
+    <arg name="db_path" default="$(find j2n6s300_moveit_config)/default_warehouse_mongo_db" />
+
+    <!-- By default, we are not in debug mode -->
+    <arg name="debug" default="false" />
+
+    <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
+    <include file="$(find j2n6s300_moveit_config)/launch/planning_context.launch">
+        <arg name="load_robot_description" value="true"/>
+    </include>
+
+    <!-- If needed, broadcast static tf for robot root -->
+    
+    <!-- Run joint trajectory action server, which receives planned motion goal under "follow_joint_trajectory", and publish ROS standard trajectory via topic "command". Then for specified robot, the trajectory will be interpreted to their own joint trajectory controller -->
+    <node name="j2n6s300_joint_trajectory_action_server" pkg="kinova_driver" type="joint_trajectory_action_server" output="screen" respawn="false" args="j2n6s300"/>
+
+    <!-- Run gripper command action server, which receives planned motion goal under "gripper_command". After receiving the command from Moveit Rviz Plugin, this node act as an actionlib client and send the goal to the finger position action server from kinova_driver.  -->
+    <node name="j2n6s300_gripper_command_action_server" pkg="kinova_driver" type="gripper_command_action_server" output="screen" respawn="false" args="j2n6s300"/>
+
+
+    <!-- Run the main MoveIt executable without trajectory execution (we do not have controllers configured by default) -->
+    <include file="$(find j2n6s300_moveit_config)/launch/move_group_j2n6s300.launch">
+        <arg name="allow_trajectory_execution" value="true"/>
+        <arg name="fake_execution" value="false"/>
+        <arg name="info" value="true"/>
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="joint_states_ns" value="/j2n6s300_driver/out/joint_state"/>
+    </include>
+
+    <!-- kinova-driver Controller parameters-->  
+    <rosparam file="$(find j2n6s300_moveit_config)/config/controllers.yaml"/>
+
+    <!-- Run Rviz and load the default config to see the state of the move_group node -->
+    <arg unless="$(arg debug)" name="launch_prefix" value="" />
+    <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+
+    <arg name="config" default="true" />
+    <arg unless="$(arg config)" name="command_args" value="" />
+    <arg     if="$(arg config)" name="command_args" value="-d $(find sara_arm)/rviz/moveit.rviz" />
+    
+    <node name="$(anon rviz)" launch-prefix="$(arg launch_prefix)" pkg="rviz" type="rviz" respawn="false"
+        args="$(arg command_args)" output="screen">
+        <rosparam command="load" file="$(find j2n6s300_moveit_config)/config/kinematics.yaml"/>
+    </node>
+
+    <!-- If database loading was enabled, start mongodb as well -->
+    <include file="$(find j2n6s300_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)">
+        <arg name="moveit_warehouse_database_path" value="$(arg db_path)"/>
+    </include>	
 
     <include file="$(find sara_arm)/launch/image_selector.launch"/>
 

@@ -13,6 +13,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
     tf2
     tf2_ros
     kinova_msgs
+    kinova_driver
     moveit_visual_tools
     tf2_eigen
     ocs2_mobile_manipulator_ros
@@ -65,6 +66,9 @@ target_link_libraries(pcp_sara ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_executable(sara_arm src/sara_arm.cpp)
 target_link_libraries(sara_arm ${catkin_LIBRARIES})
+
+add_executable(kinova_tools src/kinova_tools.cpp)
+target_link_libraries(kinova_tools ${catkin_LIBRARIES})
 
 add_library(loop_sara src/ocs2/loop_sara.cpp)
 

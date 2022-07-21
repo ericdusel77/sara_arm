@@ -8,7 +8,7 @@
         <arg name="filters" value="pointcloud" />
         <arg name="ordered_pc" value="true" />
     </include>
-    <node pkg="tf" type="static_transform_publisher" name="world_to_rscamera" args="0.06 -0.1 0.18 -1.5708 -0.25 0.0 /world /camera_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="world_to_rscamera" args="0.045 -0.11 0.215 -1.57 -0.25 0.0 /world /camera_link 10" />
 
     <!-- <remap from="/points2" to="/point_cloud" />
     <remap from="/rgb/image_raw" to="/image_topic" />

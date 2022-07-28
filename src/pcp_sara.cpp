@@ -92,7 +92,7 @@ bool PcpSara::get3DPose(int col, int row, geometry_msgs::PoseStamped &pose) {
     if (pcl::isFinite(cloud_transformed_->at(col, row))) {
         // SET POSE POSITION
 
-        int cloud_offset = 20;
+        int cloud_offset = 30;
         if (plan_type_ == 3){
             cloud_offset = 40;
         } 

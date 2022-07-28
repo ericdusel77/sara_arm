@@ -41,35 +41,37 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace ocs2 {
 namespace mobile_manipulator {
 
-class MobileManipulatorDummyVisualization final : public DummyObserver {
- public:
-  MobileManipulatorDummyVisualization(ros::NodeHandle& nodeHandle, const MobileManipulatorInterface& interface)
-      : pinocchioInterface_(interface.getPinocchioInterface()), modelInfo_(interface.getManipulatorModelInfo()) {
-    launchVisualizerNode(nodeHandle);
-  }
+class MobileManipulatorVisualizationSARA final : public DummyObserver 
+{
+  public:
+    MobileManipulatorVisualizationSARA(ros::NodeHandle& nodeHandle, const MobileManipulatorInterface& interface)
+      : pinocchioInterface_(interface.getPinocchioInterface()), modelInfo_(interface.getManipulatorModelInfo()) 
+    {
+      launchVisualizerNode(nodeHandle);
+    }
 
-  ~MobileManipulatorDummyVisualization() override = default;
+    ~MobileManipulatorVisualizationSARA() override = default;
 
-  void update(const SystemObservation& observation, const PrimalSolution& policy, const CommandData& command) override;
+    void update(const SystemObservation& observation, const PrimalSolution& policy, const CommandData& command) override;
 
- private:
-  void launchVisualizerNode(ros::NodeHandle& nodeHandle);
+  private:
+    void launchVisualizerNode(ros::NodeHandle& nodeHandle);
 
-  void publishObservation(const ros::Time& timeStamp, const SystemObservation& observation);
-  void publishTargetTrajectories(const ros::Time& timeStamp, const TargetTrajectories& targetTrajectories);
-  void publishOptimizedTrajectory(const ros::Time& timeStamp, const PrimalSolution& policy);
+    void publishObservation(const ros::Time& timeStamp, const SystemObservation& observation);
+    void publishTargetTrajectories(const ros::Time& timeStamp, const TargetTrajectories& targetTrajectories);
+    void publishOptimizedTrajectory(const ros::Time& timeStamp, const PrimalSolution& policy);
 
-  PinocchioInterface pinocchioInterface_;
-  const ManipulatorModelInfo modelInfo_;
-  std::vector<std::string> removeJointNames_;
+    PinocchioInterface pinocchioInterface_;
+    const ManipulatorModelInfo modelInfo_;
+    std::vector<std::string> removeJointNames_;
 
-  std::unique_ptr<robot_state_publisher::RobotStatePublisher> robotStatePublisherPtr_;
-  tf::TransformBroadcaster tfBroadcaster_;
+    std::unique_ptr<robot_state_publisher::RobotStatePublisher> robotStatePublisherPtr_;
+    tf::TransformBroadcaster tfBroadcaster_;
 
-  ros::Publisher stateOptimizedPublisher_;
-  ros::Publisher stateOptimizedPosePublisher_;
+    ros::Publisher stateOptimizedPublisher_;
+    ros::Publisher stateOptimizedPosePublisher_;
 
-  std::unique_ptr<GeometryInterfaceVisualization> geometryVisualization_;
+    std::unique_ptr<GeometryInterfaceVisualization> geometryVisualization_;
 };
 
 }  // namespace mobile_manipulator

@@ -138,8 +138,8 @@ void MobileManipulatorVisualizationSARA::update(const SystemObservation& observa
 {
   const ros::Time timeStamp = ros::Time::now();
 
-  publishObservation(timeStamp, observation);
-  publishTargetTrajectories(timeStamp, command.mpcTargetTrajectories_);
+  //publishObservation(timeStamp, observation);
+  //publishTargetTrajectories(timeStamp, command.mpcTargetTrajectories_);
   publishOptimizedTrajectory(timeStamp, policy);
   
   if (geometryVisualization_ != nullptr) 

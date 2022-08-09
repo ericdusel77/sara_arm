@@ -7,9 +7,9 @@
       <!-- The URDF model of the robot -->
       <arg name="urdfFile"    value="$(find ocs2_robotic_assets)/resources/mobile_manipulator/kinova/urdf/j2n6s300.urdf" />
       <!-- The task file for the mpc. -->
-      <arg name="taskFile"    value="$(find ocs2_mobile_manipulator)/config/kinova/task_j2n6.info" />
+      <arg name="taskFile"    value="$(find sara_arm)/config/task_j2n6.info" />
       <!-- The library folder to generate CppAD codegen into -->
-      <arg name="libFolder"   value="$(find ocs2_mobile_manipulator)/auto_generated/kinova/j2n6" />
+      <arg name="libFolder"   value="$(find sara_arm)/codegen/auto_generated/kinova_j2n6" />
       
       <!-- make the files into global parameters -->
       <param name="taskFile"   value="$(arg taskFile)" />
@@ -26,12 +26,12 @@
       <node if="$(arg debug)" pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_mpc_node" name="mpc_node" 
             output="screen" launch-prefix="gnome-terminal -- gdb -ex run --args" />
       <node unless="$(arg debug)" pkg="ocs2_mobile_manipulator_ros" type="mobile_manipulator_mpc_node" name="mpc_node" 
-            output="screen" launch-prefix="" />
-
-      <node pkg="sara_arm" type="mrt_sara" name="mrt_node" 
             output="screen" launch-prefix="gnome-terminal --" />
 
-      <node if="$(arg rviz)" pkg="sara_arm" type="target_sara" name="target_node" 
-            output="screen" launch-prefix="" />
+      <node pkg="sara_arm" type="mrt_sara" name="mrt_node" 
+            output="screen" />
+
+      <node pkg="sara_arm" type="target_sara" name="target_node" 
+            output="screen" />
 
 </launch>

@@ -70,7 +70,8 @@ int main(int argc, char** argv)
   std::shared_ptr<mobile_manipulator::MobileManipulatorVisualizationSARA> visu_sara(new mobile_manipulator::MobileManipulatorVisualizationSARA(nodeHandle, interface));
 
   // SARA MRT
-  MRT_Loop_SARA loop_sara(nodeHandle, mrt, interface.mpcSettings().mrtDesiredFrequency_, interface.mpcSettings().mpcDesiredFrequency_);
+  MRT_Loop_SARA loop_sara(nodeHandle, mrt, interface.getManipulatorModelInfo(), interface.mpcSettings().mrtDesiredFrequency_, interface.mpcSettings().mpcDesiredFrequency_);
+
   loop_sara.subscribeObservers({visu_sara});
 
   // initial state
@@ -87,7 +88,7 @@ int main(int argc, char** argv)
   const TargetTrajectories initTargetTrajectories({initObservation.time}, {initTarget}, {zeroInput});
 
   // Run SARA (loops while ros is ok)
-  loop_sara.run(initObservation, initTargetTrajectories);
+  loop_sara.run(initTargetTrajectories);
 
   // Successful exit
   return 0;

@@ -29,8 +29,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <math.h>
+
+#include <tf/transform_listener.h>
+#include <nav_msgs/Odometry.h>
+#include <gazebo_msgs/LinkStates.h>
+#include <sensor_msgs/JointState.h>
+#include <control_msgs/JointTrajectoryControllerState.h>
+#include <geometry_msgs/Twist.h>
+#include <trajectory_msgs/JointTrajectory.h>
+
 #include "ocs2_ros_interfaces/mrt/DummyObserver.h"
 #include "ocs2_ros_interfaces/mrt/MRT_ROS_Interface.h"
+#include "ocs2_mobile_manipulator/ManipulatorModelInfo.h"
 
 namespace ocs2 {
 
@@ -51,6 +62,7 @@ class MRT_Loop_SARA
      */
   MRT_Loop_SARA(ros::NodeHandle& nh,
                   MRT_ROS_Interface& mrt,
+                  mobile_manipulator::ManipulatorModelInfo manipulatorModelInfo,
                   scalar_t mrtDesiredFrequency,
                   scalar_t mpcDesiredFrequency = -1);
 
@@ -62,10 +74,10 @@ class MRT_Loop_SARA
     /**
      * Runs the dummy MRT loop.
      *
-     * @param [in] initObservation: The initial observation.
      * @param [in] initTargetTrajectories: The initial TargetTrajectories.
      */
-  void run(const SystemObservation& initObservation, const TargetTrajectories& initTargetTrajectories);
+    //void run(const SystemObservation& initObservation, const TargetTrajectories& initTargetTrajectories);
+    void run(const TargetTrajectories& initTargetTrajectories);
 
     /**
      * Subscribe a set of observers to the dummy loop. Observers are updated in the provided order at the end of each timestep.
@@ -98,16 +110,59 @@ class MRT_Loop_SARA
      */
     void realtimeDummyLoop(const SystemObservation& initObservation, const TargetTrajectories& initTargetTrajectories);
 
-    void mrtLoop(const SystemObservation& initObservation, const TargetTrajectories& initTargetTrajectories);
+    void mrtLoop();
 
     /** Forward simulates the system from current observation*/
     SystemObservation forwardSimulation(const SystemObservation& currentObservation);
 
+    /** NUA TODO: Add description */
+    void setStateIndexMap();
+
+    /** NUA TODO: Add description */
+    void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
+
+    /** NUA TODO: Add description */
+    void linkStateCallback(const gazebo_msgs::LinkStates::ConstPtr& msg);
+
+    /** NUA TODO: Add description */
+    void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg);
+
+    /** NUA TODO: Add description */
+    void jointTrajectoryControllerStateCallback(const control_msgs::JointTrajectoryControllerState::ConstPtr& msg);
+
+    /** NUA TODO: Add description */
+    SystemObservation getCurrentObservation(bool initFlag=false);
+
+    /** NUA TODO: Add description */
+    //void publishCommand(const PrimalSolution& primalSolution);
+    void publishCommand(SystemObservation& currentObservation);
+
+    tf::TransformListener tfListener_;
     MRT_ROS_Interface& mrt_;
+    scalar_t dt_;
+    scalar_t time_;
+  
     std::vector<std::shared_ptr<DummyObserver>> observers_;
 
     scalar_t mrtDesiredFrequency_;
     scalar_t mpcDesiredFrequency_;
+
+    mobile_manipulator::ManipulatorModelInfo manipulatorModelInfo_;
+
+    std::vector<int> stateIndexMap;
+
+    nav_msgs::Odometry odometryMsg_;
+    geometry_msgs::Pose robotBasePoseMsg_;
+    sensor_msgs::JointState jointStateMsg_;
+    control_msgs::JointTrajectoryControllerState jointTrajectoryControllerStateMsg_;
+
+    ros::Subscriber odometrySub_;
+    ros::Subscriber linkStateSub_;
+    ros::Subscriber jointStateSub_;
+    ros::Subscriber jointTrajectoryPControllerStateSub_;
+
+    ros::Publisher baseTwistPub_;
+    ros::Publisher armJointTrajectoryPub_;
 };
 
 }  // namespace ocs2
